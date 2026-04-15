@@ -29,6 +29,7 @@ import { TimeSaved } from './time_saved';
 import { FilteringRate } from './filtering_rate';
 import { ThreatsDetected } from './threats_detected';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
+import { ExecutiveSummaryEmptyState } from './executive_summary_empty_state';
 
 interface Props {
   attackAlertIds: string[];
@@ -99,7 +100,7 @@ export const ExecutiveSummary: React.FC<Props> = ({
     euiTheme: { size },
   } = useEuiTheme();
   if (!isLoading && !hasAttackDiscoveries) {
-    return <div>{'Placeholder for the new design'}</div>;
+    return <ExecutiveSummaryEmptyState />;
   } else {
     return (
       <div
