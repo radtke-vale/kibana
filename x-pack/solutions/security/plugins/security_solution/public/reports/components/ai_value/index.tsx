@@ -144,6 +144,10 @@ export const AIValueMetrics: React.FC<Props> = (props) => {
           >
             <EuiHorizontalRule />
           </div>
+          <ValueReportSettings
+            analystHourlyRate={analystHourlyRate}
+            minutesPerAlert={minutesPerAlert}
+          />
         </>
       )}
       {(isLoading || hasAttackDiscoveries) && (
@@ -162,12 +166,12 @@ export const AIValueMetrics: React.FC<Props> = (props) => {
           >
             <EuiHorizontalRule />
           </div>
+          <ValueReportSettings
+            analystHourlyRate={analystHourlyRate}
+            minutesPerAlert={minutesPerAlert}
+          />
         </>
       )}
-      <ValueReportSettings
-        analystHourlyRate={analystHourlyRate}
-        minutesPerAlert={minutesPerAlert}
-      />
     </div>
   );
 };
