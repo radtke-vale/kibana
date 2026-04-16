@@ -17,8 +17,7 @@ import {
   EuiButtonIcon,
   EuiPanel,
 } from '@elastic/eui';
-import analyticsSpeedAcceleration from './analytics-speed-accelation.svg';
-import { SampleReport } from './sample_report';
+import analyticsSpeedAcceleration from './analytics_speed_accelation.svg';
 
 export const ExecutiveSummaryEmptyState: React.FC<{}> = () => {
   return (
@@ -63,7 +62,7 @@ export const ExecutiveSummaryEmptyState: React.FC<{}> = () => {
       <EuiSpacer size="l" css={{ backgroundColor: 'warning' }} />
       {/* TODO: AI generated based on existing report, not matching fully */}
       <EuiPanel hasShadow={true} color="subdued">
-        <SampleReport />
+        {/* -- PLACEHOLDER FOR THE REPORT WITH STABBED DATA--*/}
       </EuiPanel>
     </>
   );
