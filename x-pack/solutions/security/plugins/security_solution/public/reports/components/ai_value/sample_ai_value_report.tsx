@@ -22,6 +22,7 @@ import {
 import { css } from '@emotion/react';
 import { SECURITY_SOLUTION_DEFAULT_VALUE_REPORT_TITLE } from '@kbn/management-settings-ids';
 import { i18n as i18nLib } from '@kbn/i18n';
+import { SampleAlertProcessingDonut } from './sample_alert_processing_donut';
 import { SampleCostSavings } from './sample_cost_savings';
 import * as i18n from './translations';
 import { formatDollars, formatThousands, getTimeRangeAsDays, formatPercent } from './metrics';
@@ -37,6 +38,60 @@ import {
 } from './sample_data';
 import analyticsSpeedAcceleration from './analytics_speed_accelation.svg';
 import { SampleMetricBox } from './sample_metric_box';
+import { AlertsProcessingTable } from './alert_processing_table';
+import { AlertProcessingKeyInsight } from './alert_processing_key_insight';
+
+const SampleCostSavingsKeyInsight: React.FC = () => {
+  const {
+    euiTheme: { size },
+  } = useEuiTheme();
+
+  return (
+    <div
+      css={css`
+        background: linear-gradient(
+          112deg,
+          rgba(89, 159, 254, 0.08) 3.58%,
+          rgba(240, 78, 152, 0.08) 98.48%
+        );
+        border-radius: ${size.s};
+        padding: ${size.base};
+        min-height: 200px;
+      `}
+    >
+      <EuiFlexGroup gutterSize="s" alignItems="center" responsive={false}>
+        <EuiFlexItem grow={false}>
+          <EuiIcon type="logoElastic" size="m" aria-hidden={true} />
+        </EuiFlexItem>
+        <EuiFlexItem>
+          <EuiTitle size="xs">
+            <p>{i18n.KEY_INSIGHT}</p>
+          </EuiTitle>
+        </EuiFlexItem>
+      </EuiFlexGroup>
+      <EuiSpacer size="m" />
+      <EuiText size="s" color="subdued">
+        <ul>
+          <li>
+            {'Between March 17 and April 16, 12-hour cost savings '}
+            <strong>{'averaged around $400'}</strong>
+            {', appearing frequently throughout the period.'}
+          </li>
+          <li>
+            {'Savings showed an '}
+            <strong>{'upward trend'}</strong>
+            {' in late March, with more $450\u2013$600 intervals emerging.'}
+          </li>
+          <li>
+            {'At this pace, projected annual savings '}
+            <strong>{'exceed $200K'}</strong>
+            {', indicating consistent and growing ROI.'}
+          </li>
+        </ul>
+      </EuiText>
+    </div>
+  );
+};
 
 export const SampleAIValueReport: React.FC = () => {
   const {
@@ -66,6 +121,7 @@ export const SampleAIValueReport: React.FC = () => {
   const metrics = SAMPLE_VALUE_METRICS;
   const metricsCompare = SAMPLE_VALUE_METRICS_COMPARE;
   const costSavings = useMemo(() => formatDollars(metrics.costSavings), [metrics.costSavings]);
+  const escalatedAlerts = metrics.totalAlerts - metrics.filteredAlerts;
 
   return (
     <>
@@ -245,13 +301,100 @@ export const SampleAIValueReport: React.FC = () => {
             </EuiFlexGroup>
           </EuiFlexGroup>
         </div>
+        <EuiHorizontalRule />
+        <div
+          css={css`
+            padding: ${size.base} ${size.xl};
+          `}
+        >
+          <EuiTitle size="m">
+            <h2>{i18n.ALERT_PROCESSING_TITLE}</h2>
+          </EuiTitle>
+          <EuiSpacer size="l" />
+          <EuiFlexGroup
+            gutterSize="xl"
+            data-test-subj="alertSampleProcessingGroup"
+            css={css`
+              gap: 48px;
+            `}
+          >
+            <EuiFlexItem
+              grow={false}
+              css={css`
+                min-width: 300px;
+              `}
+            >
+              <SampleAlertProcessingDonut
+                filteredAlerts={metrics.filteredAlerts}
+                escalatedAlerts={escalatedAlerts}
+                totalAlerts={metrics.totalAlerts}
+              />
+              <AlertsProcessingTable
+                isLoading={false}
+                filteredAlerts={metrics.filteredAlerts}
+                escalatedAlerts={escalatedAlerts}
+                filteredAlertsPerc={formatPercent(metrics.filteredAlertsPerc)}
+                escalatedAlertsPerc={formatPercent(metrics.escalatedAlertsPerc)}
+              />
+            </EuiFlexItem>
+            <EuiFlexItem>
+              <AlertProcessingKeyInsight isLoading={false} valueMetrics={metrics} />
+            </EuiFlexItem>
+          </EuiFlexGroup>
+          <EuiSpacer size="l" />
+        </div>
+        <div
+          css={css`
+            padding: 0 16px;
+          `}
+        >
+          <EuiHorizontalRule />
+        </div>
+        <div
+          css={css`
+            padding: ${size.base} ${size.xl};
+            .euiPanel,
+            .embPanel,
+            .echMetric,
+            .echChartBackground,
+            .embPanel__hoverActions > span {
+              background-color: rgb(0, 0, 0, 0) !important;
+            }
+          `}
+          data-test-subj="cost-savings-trend-panel"
+        >
+          <EuiTitle size="m">
+            <h2>{i18n.COST_SAVINGS_TREND}</h2>
+          </EuiTitle>
+          <EuiSpacer size="l" />
+          <EuiFlexGroup
+            gutterSize="xl"
+            css={css`
+              gap: 48px;
+            `}
+          >
+            <EuiFlexItem
+              css={css`
+                max-width: ${isSmall ? 'auto' : '600px'};
+              `}
+            >
+              <SampleCostSavingsKeyInsight />
+            </EuiFlexItem>
+          </EuiFlexGroup>
+        </div>
+        <div
+          css={css`
+            padding: 0 16px;
+          `}
+        >
+          <EuiHorizontalRule />
+        </div>
+        <ValueReportSettings
+          analystHourlyRate={SAMPLE_ANALYST_HOURLY_RATE}
+          minutesPerAlert={SAMPLE_MINUTES_PER_ALERT}
+        />
       </div>
       {/* TODO: END: Executive Sample Summary */}
-      <EuiHorizontalRule />
-      <ValueReportSettings
-        analystHourlyRate={SAMPLE_ANALYST_HOURLY_RATE}
-        minutesPerAlert={SAMPLE_MINUTES_PER_ALERT}
-      />
     </>
   );
 };
