@@ -54,12 +54,6 @@ export const SampleAlertProcessingDonut: React.FC<Props> = ({
     },
   };
 
-  <Settings
-    theme={[donutTheme, { background: { color: 'transparent' } }, theme]}
-    baseTheme={baseTheme}
-    locale={i18nLib.getLocale()}
-  />;
-
   return (
     <div
       className="donutChart"

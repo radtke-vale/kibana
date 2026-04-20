@@ -40,6 +40,7 @@ import analyticsSpeedAcceleration from './analytics_speed_accelation.svg';
 import { SampleMetricBox } from './sample_metric_box';
 import { AlertsProcessingTable } from './alert_processing_table';
 import { AlertProcessingKeyInsight } from './alert_processing_key_insight';
+import { SampleCostSavingsTrendChart } from './sample_cost_savings_trend_chart';
 
 const SampleCostSavingsKeyInsight: React.FC = () => {
   const {
@@ -373,6 +374,9 @@ export const SampleAIValueReport: React.FC = () => {
               gap: 48px;
             `}
           >
+            <EuiFlexItem>
+              <SampleCostSavingsTrendChart />
+            </EuiFlexItem>
             <EuiFlexItem
               css={css`
                 max-width: ${isSmall ? 'auto' : '600px'};
