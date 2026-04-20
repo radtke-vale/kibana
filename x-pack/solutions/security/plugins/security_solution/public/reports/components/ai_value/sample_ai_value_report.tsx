@@ -24,7 +24,7 @@ import { SECURITY_SOLUTION_DEFAULT_VALUE_REPORT_TITLE } from '@kbn/management-se
 import { i18n as i18nLib } from '@kbn/i18n';
 import { SampleCostSavings } from './sample_cost_savings';
 import * as i18n from './translations';
-import { formatDollars, formatThousands, getTimeRangeAsDays } from './metrics';
+import { formatDollars, formatThousands, getTimeRangeAsDays, formatPercent } from './metrics';
 import { useKibana } from '../../../common/lib/kibana';
 import { ValueReportSettings } from './value_report_settings';
 import {
@@ -36,6 +36,7 @@ import {
   SAMPLE_VALUE_METRICS_COMPARE,
 } from './sample_data';
 import analyticsSpeedAcceleration from './analytics_speed_accelation.svg';
+import { SampleMetricBox } from './sample_metric_box';
 
 export const SampleAIValueReport: React.FC = () => {
   const {
@@ -183,11 +184,65 @@ export const SampleAIValueReport: React.FC = () => {
           {/* Bottom row - Three KPI cards */}
           <EuiSpacer size="l" />
           <EuiFlexGroup direction={isSmall ? 'column' : 'row'} gutterSize="m">
-            <EuiFlexItem
-              css={css`
-                display: grid;
-              `}
-            />
+            <EuiFlexGroup direction={isSmall ? 'column' : 'row'} gutterSize="m">
+              <EuiFlexItem
+                css={css`
+                  display: grid;
+                `}
+              >
+                <SampleMetricBox
+                  id="sample-time-saved-metric"
+                  title={i18n.TIME_SAVED}
+                  value={metrics.hoursSaved}
+                  valueFormatter={(v) => formatThousands(Math.round(v))}
+                  iconType="clock"
+                  iconColor={colors.vis.euiColorVis2}
+                  currentCount={metrics.hoursSaved}
+                  previousCount={metricsCompare.hoursSaved}
+                  stat={formatThousands(metricsCompare.hoursSaved)}
+                  statType={i18n.TIME_SAVED_DESC.toLowerCase()}
+                  timeRange={timerangeAsDays}
+                />
+              </EuiFlexItem>
+              <EuiFlexItem
+                css={css`
+                  display: grid;
+                `}
+              >
+                <SampleMetricBox
+                  id="sample-filtering-rate-metric"
+                  title={i18n.FILTERING_RATE}
+                  value={metrics.filteredAlertsPerc / 100}
+                  valueFormatter={(v) => formatPercent(v * 100)}
+                  iconType="chartLine"
+                  iconColor={colors.vis.euiColorVis4}
+                  currentCount={metrics.filteredAlertsPerc}
+                  previousCount={metricsCompare.filteredAlertsPerc}
+                  stat={formatPercent(metricsCompare.filteredAlertsPerc)}
+                  statType={i18n.FILTERING_RATE}
+                  timeRange={timerangeAsDays}
+                />
+              </EuiFlexItem>
+              <EuiFlexItem
+                css={css`
+                  display: grid;
+                `}
+              >
+                <SampleMetricBox
+                  id="sample-threats-detected-metric"
+                  title={i18n.THREATS_DETECTED}
+                  value={metrics.attackDiscoveryCount}
+                  valueFormatter={(v) => formatThousands(v)}
+                  iconType="crosshair"
+                  iconColor={colors.vis.euiColorVis6}
+                  currentCount={metrics.attackDiscoveryCount}
+                  previousCount={metricsCompare.attackDiscoveryCount}
+                  stat={`${metricsCompare.attackDiscoveryCount}`}
+                  statType={i18n.ATTACK_DISCOVERY_COUNT}
+                  timeRange={timerangeAsDays}
+                />
+              </EuiFlexItem>
+            </EuiFlexGroup>
           </EuiFlexGroup>
         </div>
       </div>
