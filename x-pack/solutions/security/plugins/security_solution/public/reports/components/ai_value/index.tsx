@@ -20,6 +20,7 @@ import { AlertProcessing } from './alert_processing';
 import { useValueMetrics } from '../../hooks/use_value_metrics';
 import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
+import { SampleAIValueReport } from './sample_ai_value_report';
 
 interface Props {
   setHasAttackDiscoveries: React.Dispatch<boolean>;
@@ -101,6 +102,9 @@ export const AIValueMetrics: React.FC<Props> = (props) => {
     euiTheme: { colors },
   } = useEuiTheme();
 
+  if (!isLoading && !hasAttackDiscoveries) {
+    return <SampleAIValueReport />;
+  }
   return (
     <div
       css={css`

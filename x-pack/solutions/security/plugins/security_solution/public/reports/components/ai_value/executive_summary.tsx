@@ -29,7 +29,6 @@ import { TimeSaved } from './time_saved';
 import { FilteringRate } from './filtering_rate';
 import { ThreatsDetected } from './threats_detected';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
-import { ExecutiveSummaryEmptyState } from './executive_summary_empty_state';
 
 interface Props {
   attackAlertIds: string[];
@@ -99,148 +98,144 @@ export const ExecutiveSummary: React.FC<Props> = ({
   const {
     euiTheme: { size },
   } = useEuiTheme();
-  if (!isLoading && !hasAttackDiscoveries) {
-    return <ExecutiveSummaryEmptyState />;
-  } else {
-    return (
-      <div
-        data-test-subj="executiveSummaryContainer"
-        css={css`
-          border-radius: ${size.s};
-          padding: ${size.base} ${size.xl};
-          min-height: 200px;
-        `}
+  return (
+    <div
+      data-test-subj="executiveSummaryContainer"
+      css={css`
+        border-radius: ${size.s};
+        padding: ${size.base} ${size.xl};
+        min-height: 200px;
+      `}
+    >
+      <EuiInlineEditTitle
+        isReadOnly={isExportMode}
+        className="executiveSummaryTitle"
+        data-test-subj="executiveSummaryTitle"
+        size="l"
+        heading="h1"
+        inputAriaLabel={i18n.EDIT_TITLE}
+        value={title}
+        onChange={onTitleChange}
+        onCancel={(previousValue) => {
+          updateTitle(previousValue);
+        }}
+      />
+
+      <EuiText size="s" color="subdued" data-test-subj="executiveSummaryDateRange">
+        <p>{subtitle}</p>
+      </EuiText>
+
+      <EuiSpacer size="l" />
+
+      <EuiFlexGroup
+        direction={isSmall ? 'column' : 'row'}
+        data-test-subj="executiveSummaryFlexGroup"
       >
-        <EuiInlineEditTitle
-          isReadOnly={isExportMode}
-          className="executiveSummaryTitle"
-          data-test-subj="executiveSummaryTitle"
-          size="l"
-          heading="h1"
-          inputAriaLabel={i18n.EDIT_TITLE}
-          value={title}
-          onChange={onTitleChange}
-          onCancel={(previousValue) => {
-            updateTitle(previousValue);
-          }}
-        />
-
-        <EuiText size="s" color="subdued" data-test-subj="executiveSummaryDateRange">
-          <p>{subtitle}</p>
-        </EuiText>
-
-        <EuiSpacer size="l" />
-
-        <EuiFlexGroup
-          direction={isSmall ? 'column' : 'row'}
-          data-test-subj="executiveSummaryFlexGroup"
+        <EuiFlexItem
+          css={css`
+            min-width: 350px;
+          `}
+          data-test-subj="executiveSummaryMainInfo"
         >
+          <span>
+            <EuiText size="s" color="subdued">
+              {isLoading ? (
+                <EuiSkeletonText lines={3} size="s" isLoading={true} />
+              ) : (
+                <p data-test-subj="executiveSummaryMessage">
+                  {i18n.EXECUTIVE_SUMMARY_SUBTITLE}
+                  <strong>
+                    {i18n.EXECUTIVE_SAVINGS_SUMMARY({
+                      costSavings,
+                      hoursSaved: formatThousands(valueMetrics.hoursSaved),
+                    })}
+                  </strong>
+                  {i18n.EXECUTIVE_SUMMARY_MAIN_TEXT({
+                    timeRange: timerangeAsDays,
+                    minutesPerAlert,
+                    analystRate: analystHourlyRate,
+                  })}
+                  <br />
+                  <br />
+                  {i18n.EXECUTIVE_SUMMARY_SECONDARY_TEXT}
+                </p>
+              )}
+            </EuiText>
+          </span>
+        </EuiFlexItem>
+
+        {/* Right side - Only Cost Savings card */}
+        {(isLoading || hasAttackDiscoveries) && (
           <EuiFlexItem
             css={css`
-              min-width: 350px;
+              min-width: 300px;
+              display: grid;
             `}
-            data-test-subj="executiveSummaryMainInfo"
+            grow={isSmall}
+            data-test-subj="executiveSummarySideStats"
           >
-            <span>
-              <EuiText size="s" color="subdued">
-                {isLoading ? (
-                  <EuiSkeletonText lines={3} size="s" isLoading={true} />
-                ) : (
-                  <p data-test-subj="executiveSummaryMessage">
-                    {i18n.EXECUTIVE_SUMMARY_SUBTITLE}
-                    <strong>
-                      {i18n.EXECUTIVE_SAVINGS_SUMMARY({
-                        costSavings,
-                        hoursSaved: formatThousands(valueMetrics.hoursSaved),
-                      })}
-                    </strong>
-                    {i18n.EXECUTIVE_SUMMARY_MAIN_TEXT({
-                      timeRange: timerangeAsDays,
-                      minutesPerAlert,
-                      analystRate: analystHourlyRate,
-                    })}
-                    <br />
-                    <br />
-                    {i18n.EXECUTIVE_SUMMARY_SECONDARY_TEXT}
-                  </p>
-                )}
-              </EuiText>
-            </span>
+            <CostSavings
+              analystHourlyRate={analystHourlyRate}
+              costSavings={valueMetrics.costSavings}
+              costSavingsCompare={valueMetricsCompare.costSavings}
+              minutesPerAlert={minutesPerAlert}
+              from={from}
+              to={to}
+            />
           </EuiFlexItem>
+        )}
+      </EuiFlexGroup>
 
-          {/* Right side - Only Cost Savings card */}
-          {(isLoading || hasAttackDiscoveries) && (
+      {/* Bottom row - Three KPI cards */}
+      {(isLoading || hasAttackDiscoveries) && (
+        <>
+          <EuiSpacer size="l" />
+          <EuiFlexGroup direction={isSmall ? 'column' : 'row'} gutterSize="m">
             <EuiFlexItem
               css={css`
-                min-width: 300px;
                 display: grid;
               `}
-              grow={isSmall}
-              data-test-subj="executiveSummarySideStats"
             >
-              <CostSavings
-                analystHourlyRate={analystHourlyRate}
-                costSavings={valueMetrics.costSavings}
-                costSavingsCompare={valueMetricsCompare.costSavings}
+              <TimeSaved
                 minutesPerAlert={minutesPerAlert}
+                hoursSaved={valueMetrics.hoursSaved}
+                hoursSavedCompare={valueMetricsCompare.hoursSaved}
                 from={from}
                 to={to}
               />
             </EuiFlexItem>
-          )}
-        </EuiFlexGroup>
+            {/* Alert filtering rate card */}
+            <EuiFlexItem
+              css={css`
+                display: grid;
+              `}
+            >
+              <FilteringRate
+                attackAlertIds={attackAlertIds}
+                totalAlerts={valueMetrics.totalAlerts}
+                filteredAlertsPerc={valueMetrics.filteredAlertsPerc}
+                filteredAlertsPercCompare={valueMetricsCompare.filteredAlertsPerc}
+                from={from}
+                to={to}
+              />
+            </EuiFlexItem>
 
-        {/* Bottom row - Three KPI cards */}
-        {(isLoading || hasAttackDiscoveries) && (
-          <>
-            <EuiSpacer size="l" />
-            <EuiFlexGroup direction={isSmall ? 'column' : 'row'} gutterSize="m">
-              <EuiFlexItem
-                css={css`
-                  display: grid;
-                `}
-              >
-                <TimeSaved
-                  minutesPerAlert={minutesPerAlert}
-                  hoursSaved={valueMetrics.hoursSaved}
-                  hoursSavedCompare={valueMetricsCompare.hoursSaved}
-                  from={from}
-                  to={to}
-                />
-              </EuiFlexItem>
-              {/* Alert filtering rate card */}
-              <EuiFlexItem
-                css={css`
-                  display: grid;
-                `}
-              >
-                <FilteringRate
-                  attackAlertIds={attackAlertIds}
-                  totalAlerts={valueMetrics.totalAlerts}
-                  filteredAlertsPerc={valueMetrics.filteredAlertsPerc}
-                  filteredAlertsPercCompare={valueMetricsCompare.filteredAlertsPerc}
-                  from={from}
-                  to={to}
-                />
-              </EuiFlexItem>
-
-              {/* Real threats detected card */}
-              <EuiFlexItem
-                css={css`
-                  display: grid;
-                `}
-              >
-                <ThreatsDetected
-                  attackDiscoveryCount={valueMetrics.attackDiscoveryCount}
-                  attackDiscoveryCountCompare={valueMetricsCompare.attackDiscoveryCount}
-                  from={from}
-                  to={to}
-                />
-              </EuiFlexItem>
-            </EuiFlexGroup>
-          </>
-        )}
-      </div>
-    );
-  }
+            {/* Real threats detected card */}
+            <EuiFlexItem
+              css={css`
+                display: grid;
+              `}
+            >
+              <ThreatsDetected
+                attackDiscoveryCount={valueMetrics.attackDiscoveryCount}
+                attackDiscoveryCountCompare={valueMetricsCompare.attackDiscoveryCount}
+                from={from}
+                to={to}
+              />
+            </EuiFlexItem>
+          </EuiFlexGroup>
+        </>
+      )}
+    </div>
+  );
 };
