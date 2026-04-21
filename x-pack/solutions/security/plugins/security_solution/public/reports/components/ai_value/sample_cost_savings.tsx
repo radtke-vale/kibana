@@ -16,6 +16,7 @@ import type { ValueMetrics } from './metrics';
 import { formatDollars } from './metrics';
 import { ComparePercentageBadge } from './compare_percentage_badge';
 import * as i18n from './translations';
+import { COST_SAVINGS } from './translations';
 
 interface Props {
   metrics: ValueMetrics;
@@ -42,7 +43,7 @@ export const SampleCostSavings: React.FC<Props> = ({
     color: string;
   }) => <EuiIcon type="rocket" fill={color} style={{ width, height }} aria-hidden={true} />;
   const data: MetricWNumber = {
-    title: 'Cost Savings',
+    title: COST_SAVINGS,
     value: metrics.costSavings, // raw number
     valueFormatter: (v) => formatDollars(v), // '$12,345'
     color: colors.backgroundBaseSuccess, // green background

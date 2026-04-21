@@ -337,3 +337,28 @@ export const TOTAL_ALERTS_PROCESSED = i18n.translate(
     defaultMessage: 'Total alerts processed',
   }
 );
+
+export const NO_ATTACKS_DETECTED = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.noAttacksDetected',
+  {
+    defaultMessage: 'No attacks detected yet',
+  }
+);
+
+export const GET_STARTED_ATTACK_DISCOVERY = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.getStartedAttackDiscovery',
+  {
+    defaultMessage: 'Get started with Attack Discovery',
+  }
+);
+
+export const ATTACK_DISCOVERY = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.attackDiscovery',
+  {
+    defaultMessage: 'Attack discovery',
+  }
+);
+
+export const COST_SAVINGS = i18n.translate('xpack.securitySolution.reports.aiValue.costSavings', {
+  defaultMessage: 'Cost Savings',
+});

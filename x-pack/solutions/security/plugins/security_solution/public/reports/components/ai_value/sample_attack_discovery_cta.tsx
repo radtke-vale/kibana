@@ -17,26 +17,23 @@ import {
   EuiTitle,
 } from '@elastic/eui';
 import analyticsSpeedAcceleration from './analytics_speed_accelation.svg';
+import * as i18n from './translations';
 
 export const SampleAttackDiscoveryCta: React.FC = () => (
   <EuiPanel hasShadow={true} color="subdued">
     <EuiFlexGroup alignItems="center" justifyContent="spaceBetween">
       <EuiFlexItem grow={false} alignItems="center">
         <EuiSpacer size="m" />
-        <EuiIcon
-          type={analyticsSpeedAcceleration}
-          size="original"
-          title="Analytics Speed Acceleration"
-        />
+        <EuiIcon type={analyticsSpeedAcceleration} size="original" aria-hidden={true} />
       </EuiFlexItem>
       <EuiFlexItem grow={6}>
         <EuiSpacer size="s" />
         <EuiTitle size="xs">
-          <p>{'No attacks detected yet'}</p>
+          <p>{i18n.NO_ATTACKS_DETECTED}</p>
         </EuiTitle>
         <EuiSpacer size="s" />
         <EuiText size="s">
-          <p>{'Get started with Attack Discovery'}</p>
+          <p>{i18n.GET_STARTED_ATTACK_DISCOVERY}</p>
         </EuiText>
       </EuiFlexItem>
       <EuiFlexItem grow={false}>
@@ -47,7 +44,7 @@ export const SampleAttackDiscoveryCta: React.FC = () => (
           color="primary"
           onClick={() => {}}
         >
-          {'Attack discovery'}
+          {i18n.ATTACK_DISCOVERY}
         </EuiButtonEmpty>
       </EuiFlexItem>
     </EuiFlexGroup>

@@ -12,6 +12,7 @@ import { i18n as i18nLib } from '@kbn/i18n';
 import { useThemes } from '../../../common/components/charts/common';
 import { formatDollars } from './metrics';
 import { SAMPLE_TREND_DATA } from './sample_data';
+import { COST_SAVINGS } from './translations';
 
 export const SampleCostSavingsTrendChart: React.FC = () => {
   const { baseTheme, theme } = useThemes();
@@ -56,7 +57,7 @@ export const SampleCostSavingsTrendChart: React.FC = () => {
       />
       <LineSeries
         id="cost-savings"
-        name="Cost Savings"
+        name={COST_SAVINGS}
         xScaleType={ScaleType.Time}
         yScaleType={ScaleType.Linear}
         xAccessor="timestamp"

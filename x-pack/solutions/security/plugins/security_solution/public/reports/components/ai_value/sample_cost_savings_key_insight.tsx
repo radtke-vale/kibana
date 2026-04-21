@@ -16,12 +16,31 @@ import {
   useEuiTheme,
 } from '@elastic/eui';
 import { css } from '@emotion/react';
+import { i18n as i18nLib } from '@kbn/i18n';
+import { FormattedMessage } from '@kbn/i18n-react';
+import {
+  SAMPLE_FROM,
+  SAMPLE_INTERVAL_HOURS,
+  SAMPLE_KEY_INSIGHT_AVERAGED_COST,
+  SAMPLE_KEY_INSIGHT_COST_RANGE,
+  SAMPLE_KEY_INSIGHT_PROJECTED_ANNUAL_SAVINGS,
+  SAMPLE_TO,
+} from './sample_data';
 import * as i18n from './translations';
 
 export const SampleCostSavingsKeyInsight: React.FC = () => {
   const {
     euiTheme: { size },
   } = useEuiTheme();
+  const locale = i18nLib.getLocale();
+  const fromFormatted = new Date(SAMPLE_FROM).toLocaleDateString(locale, {
+    month: 'long',
+    day: 'numeric',
+  });
+  const toFormatted = new Date(SAMPLE_TO).toLocaleDateString(locale, {
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
     <div
@@ -50,19 +69,58 @@ export const SampleCostSavingsKeyInsight: React.FC = () => {
       <EuiText size="s" color="subdued">
         <ul>
           <li>
-            {'Between March 17 and April 16, 12-hour cost savings '}
-            <strong>{'averaged around $400'}</strong>
-            {', appearing frequently throughout the period.'}
+            <FormattedMessage
+              id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet1.descriptionDetail"
+              defaultMessage="Between {from} and {to}, {intervalHours}-hour cost savings {averagedValue}, appearing frequently throughout the period."
+              values={{
+                from: fromFormatted,
+                to: toFormatted,
+                intervalHours: SAMPLE_INTERVAL_HOURS,
+                averagedValue: (
+                  <strong>
+                    <FormattedMessage
+                      id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet1.averagedValueLabel"
+                      defaultMessage="averaged around {value}"
+                      values={{ value: SAMPLE_KEY_INSIGHT_AVERAGED_COST }}
+                    />
+                  </strong>
+                ),
+              }}
+            />
           </li>
           <li>
-            {'Savings showed an '}
-            <strong>{'upward trend'}</strong>
-            {' in late March, with more $450\u2013$600 intervals emerging.'}
+            <FormattedMessage
+              id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet2.descriptionDetail"
+              defaultMessage="Savings showed an {trendValue} in late March, with more {intervalRange} intervals emerging."
+              values={{
+                trendValue: (
+                  <strong>
+                    <FormattedMessage
+                      id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet2.trendValueLabel"
+                      defaultMessage="upward trend"
+                    />
+                  </strong>
+                ),
+                intervalRange: SAMPLE_KEY_INSIGHT_COST_RANGE,
+              }}
+            />
           </li>
           <li>
-            {'At this pace, projected annual savings '}
-            <strong>{'exceed $200K'}</strong>
-            {', indicating consistent and growing ROI.'}
+            <FormattedMessage
+              id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet3.descriptionDetail"
+              defaultMessage="At this pace, projected annual savings {exceedValue}, indicating consistent and growing ROI."
+              values={{
+                exceedValue: (
+                  <strong>
+                    <FormattedMessage
+                      id="xpack.securitySolution.reports.aiValue.sampleKeyInsightBullet3.exceedValueLabel"
+                      defaultMessage="exceed {value}"
+                      values={{ value: SAMPLE_KEY_INSIGHT_PROJECTED_ANNUAL_SAVINGS }}
+                    />
+                  </strong>
+                ),
+              }}
+            />
           </li>
         </ul>
       </EuiText>

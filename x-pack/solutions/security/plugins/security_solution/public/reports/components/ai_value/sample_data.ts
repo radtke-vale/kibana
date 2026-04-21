@@ -33,7 +33,8 @@ export const SAMPLE_FROM = '2026-03-17T00:00:00.000Z';
 export const SAMPLE_TO = '2026-04-16T23:59:59.999Z';
 
 const SAMPLE_TREND_START_TIMESTAMP = new Date(SAMPLE_FROM).getTime();
-const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+export const SAMPLE_INTERVAL_HOURS = 12;
+const TWELVE_HOURS_MS = SAMPLE_INTERVAL_HOURS * 60 * 60 * 1000;
 
 const SAMPLE_TREND_COST_SAVINGS = [
   401, 485, 559, 491, 456, 510, 471, 488, 369, 315, 210, 200, 271, 367, 375, 331, 397, 469, 600,
@@ -46,3 +47,9 @@ export const SAMPLE_TREND_DATA = SAMPLE_TREND_COST_SAVINGS.map((costSavings, ind
   timestamp: SAMPLE_TREND_START_TIMESTAMP + index * TWELVE_HOURS_MS,
   costSavings,
 }));
+
+// Key insight descriptive values — derived from SAMPLE_TREND_COST_SAVINGS above.
+// Update these if the trend data changes.
+export const SAMPLE_KEY_INSIGHT_AVERAGED_COST = '$400';
+export const SAMPLE_KEY_INSIGHT_COST_RANGE = '$450\u2013$600';
+export const SAMPLE_KEY_INSIGHT_PROJECTED_ANNUAL_SAVINGS = '$200K';
