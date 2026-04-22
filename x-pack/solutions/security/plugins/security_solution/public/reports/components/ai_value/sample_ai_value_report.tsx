@@ -6,10 +6,18 @@
  */
 
 import React from 'react';
-import { EuiHorizontalRule, EuiSpacer, useEuiTheme } from '@elastic/eui';
+import {
+  EuiHorizontalRule,
+  EuiPanel,
+  EuiSpacer,
+  useEuiTheme,
+  EuiFlexItem,
+  EuiTitle,
+} from '@elastic/eui';
 import { css } from '@emotion/react';
 import { ValueReportSettings } from './value_report_settings';
 import { SAMPLE_ANALYST_HOURLY_RATE, SAMPLE_MINUTES_PER_ALERT } from './sample_data';
+import * as i18n from './translations';
 import { SampleAttackDiscoveryCta } from './sample_attack_discovery_cta';
 import { SampleExecutiveSummary } from './sample_executive_summary';
 import { SampleAlertProcessing } from './sample_alert_processing';
@@ -29,37 +37,55 @@ export const SampleAIValueReport: React.FC = () => {
           background: ${colors.backgroundBasePlain};
         `}
       />
-      <div
-        css={css`
-          background: ${colors.backgroundBaseSubdued};
-          width: 100%;
-          min-height: 100%;
-          border-radius: 8px;
-        `}
-      >
-        <SampleExecutiveSummary />
-        <EuiHorizontalRule />
-        <SampleAlertProcessing />
-        <div
-          css={css`
-            padding: 0 16px;
-          `}
-        >
-          <EuiHorizontalRule />
-        </div>
-        <SampleCostSavingsTrend />
-        <div
-          css={css`
-            padding: 0 16px;
-          `}
-        >
-          <EuiHorizontalRule />
-        </div>
-        <ValueReportSettings
-          analystHourlyRate={SAMPLE_ANALYST_HOURLY_RATE}
-          minutesPerAlert={SAMPLE_MINUTES_PER_ALERT}
-        />
-      </div>
+      <EuiPanel hasBorder={true} borderRadius="m" color="warning">
+        <EuiFlexItem alignItems="center">
+          <EuiTitle
+            size="s"
+            textTransform="uppercase"
+            css={css`
+              background: ${colors.backgroundBaseWarning};
+              text-align: center;
+              color: ${colors.borderStrongWarning};
+            `}
+          >
+            <p>{i18n.SAMPLE_REPORT}</p>
+          </EuiTitle>
+          <EuiSpacer size="s" />
+        </EuiFlexItem>
+        <EuiFlexItem>
+          <div
+            css={css`
+              background: ${colors.backgroundBaseSubdued};
+              width: 100%;
+              min-height: 100%;
+              border-radius: 8px;
+            `}
+          >
+            <SampleExecutiveSummary />
+            <EuiHorizontalRule />
+            <SampleAlertProcessing />
+            <div
+              css={css`
+                padding: 0 16px;
+              `}
+            >
+              <EuiHorizontalRule />
+            </div>
+            <SampleCostSavingsTrend />
+            <div
+              css={css`
+                padding: 0 16px;
+              `}
+            >
+              <EuiHorizontalRule />
+            </div>
+            <ValueReportSettings
+              analystHourlyRate={SAMPLE_ANALYST_HOURLY_RATE}
+              minutesPerAlert={SAMPLE_MINUTES_PER_ALERT}
+            />
+          </div>
+        </EuiFlexItem>
+      </EuiPanel>
     </>
   );
 };

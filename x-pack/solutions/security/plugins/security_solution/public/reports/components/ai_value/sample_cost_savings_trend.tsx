@@ -37,7 +37,7 @@ export const SampleCostSavingsTrend: React.FC = () => {
           background-color: rgb(0, 0, 0, 0) !important;
         }
       `}
-      data-test-subj="cost-savings-trend-panel"
+      data-test-subj="sampleCostSavingsTrend"
     >
       <EuiTitle size="m">
         <h2>{i18n.COST_SAVINGS_TREND}</h2>

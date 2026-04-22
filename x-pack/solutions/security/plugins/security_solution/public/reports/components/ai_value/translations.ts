@@ -362,3 +362,7 @@ export const ATTACK_DISCOVERY = i18n.translate(
 export const COST_SAVINGS = i18n.translate('xpack.securitySolution.reports.aiValue.costSavings', {
   defaultMessage: 'Cost Savings',
 });
+
+export const SAMPLE_REPORT = i18n.translate('xpack.securitySolution.reports.aiValue.sampleReport', {
+  defaultMessage: 'Sample report',
+});
