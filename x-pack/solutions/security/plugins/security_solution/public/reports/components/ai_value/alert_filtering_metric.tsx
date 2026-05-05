@@ -5,51 +5,26 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo } from 'react';
-
+import type { ReactNode } from 'react';
+import React from 'react';
 import { css } from '@emotion/react';
 import { useEuiTheme } from '@elastic/eui';
-import { PageScope } from '../../../data_view_manager/constants';
-import { useSignalIndexWithDefault } from '../../hooks/use_signal_index_with_default';
-import { getExcludeAlertsFilters } from './utils';
-import type { GetLensAttributes } from '../../../common/components/visualization_actions/types';
-import { VisualizationContextMenuActions } from '../../../common/components/visualization_actions/types';
-import { getAlertFilteringMetricLensAttributes } from '../../../common/components/visualization_actions/lens_attributes/ai/alert_filtering_metric';
-import * as i18n from './translations';
-import { VisualizationEmbeddable } from '../../../common/components/visualization_actions/visualization_embeddable';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 
 interface Props {
-  attackAlertIds: string[];
-  from: string;
-  to: string;
-  totalAlerts: number;
+  metric: ReactNode;
 }
-const ID = 'AlertFilteringMetricQuery';
-const AlertFilteringMetricComponent: React.FC<Props> = ({
-  attackAlertIds,
-  from,
-  to,
-  totalAlerts,
-}) => {
+
+const AlertFilteringMetricComponent: React.FC<Props> = ({ metric }) => {
   const {
     euiTheme: { colors },
   } = useEuiTheme();
   const aiValueExportContext = useAIValueExportContext();
   const isExportMode = aiValueExportContext?.isExportMode === true;
-  const extraVisualizationOptions = useMemo(
-    () => ({
-      filters: getExcludeAlertsFilters(attackAlertIds),
-    }),
-    [attackAlertIds]
-  );
-  const signalIndexName = useSignalIndexWithDefault();
-  const getLensAttributes = useCallback<GetLensAttributes>(
-    (args) => getAlertFilteringMetricLensAttributes({ ...args, signalIndexName, totalAlerts }),
-    [signalIndexName, totalAlerts]
-  );
+
   return (
     <div
+      data-test-subj="alert-filtering-metric-container"
       css={css`
         height: 100%;
         > * {
@@ -85,20 +60,7 @@ const AlertFilteringMetricComponent: React.FC<Props> = ({
         }
       `}
     >
-      <VisualizationEmbeddable
-        data-test-subj="alert-filtering-metric"
-        extraOptions={extraVisualizationOptions}
-        getLensAttributes={getLensAttributes}
-        timerange={{ from, to }}
-        id={`${ID}-area-embeddable`}
-        inspectTitle={i18n.FILTERING_RATE}
-        scopeId={PageScope.alerts}
-        withActions={[
-          VisualizationContextMenuActions.addToExistingCase,
-          VisualizationContextMenuActions.addToNewCase,
-          VisualizationContextMenuActions.inspect,
-        ]}
-      />
+      {metric}
     </div>
   );
 };

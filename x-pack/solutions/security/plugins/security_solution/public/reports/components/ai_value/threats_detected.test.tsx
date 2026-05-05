@@ -27,11 +27,14 @@ jest.mock('./metrics', () => ({
 
 const mockGetTimeRangeAsDays = getTimeRangeAsDays as jest.MockedFunction<typeof getTimeRangeAsDays>;
 
+const threatsDetectedMetric = <div data-test-subj="threats-detected-metric-slot" />;
+
 const defaultProps = {
   attackDiscoveryCount: 25,
   attackDiscoveryCountCompare: 20,
   from: '2023-01-01T00:00:00.000Z',
   to: '2023-01-31T23:59:59.999Z',
+  threatsDetectedMetric,
 };
 
 describe('ThreatsDetected', () => {
@@ -45,8 +48,7 @@ describe('ThreatsDetected', () => {
 
     expect(ThreatsDetectedMetric).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: defaultProps.from,
-        to: defaultProps.to,
+        metric: threatsDetectedMetric,
       }),
       {}
     );

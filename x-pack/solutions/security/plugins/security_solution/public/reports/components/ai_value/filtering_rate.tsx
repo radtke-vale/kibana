@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React from 'react';
 import { css } from '@emotion/react';
 import { AlertFilteringMetric } from './alert_filtering_metric';
@@ -13,21 +14,19 @@ import { formatPercent, getTimeRangeAsDays } from './metrics';
 import * as i18n from './translations';
 
 interface Props {
-  attackAlertIds: string[];
   filteredAlertsPerc: number;
   filteredAlertsPercCompare: number;
   from: string;
   to: string;
-  totalAlerts: number;
+  filteringRateMetric: ReactNode;
 }
 
 export const FilteringRate: React.FC<Props> = ({
-  attackAlertIds,
   filteredAlertsPerc,
   filteredAlertsPercCompare,
   from,
   to,
-  totalAlerts,
+  filteringRateMetric,
 }) => {
   return (
     <span
@@ -35,12 +34,7 @@ export const FilteringRate: React.FC<Props> = ({
         min-height: 160px;
       `}
     >
-      <AlertFilteringMetric
-        attackAlertIds={attackAlertIds}
-        totalAlerts={totalAlerts}
-        from={from}
-        to={to}
-      />
+      <AlertFilteringMetric metric={filteringRateMetric} />
       <ComparePercentage
         positionForLens
         currentCount={filteredAlertsPerc}

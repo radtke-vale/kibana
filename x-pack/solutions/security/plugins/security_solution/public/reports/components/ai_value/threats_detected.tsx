@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React from 'react';
 import { css } from '@emotion/react';
 import { ThreatsDetectedMetric } from './threats_detected_metric';
@@ -17,6 +18,7 @@ interface Props {
   attackDiscoveryCountCompare: number;
   from: string;
   to: string;
+  threatsDetectedMetric: ReactNode;
 }
 
 export const ThreatsDetected: React.FC<Props> = ({
@@ -24,6 +26,7 @@ export const ThreatsDetected: React.FC<Props> = ({
   attackDiscoveryCountCompare,
   from,
   to,
+  threatsDetectedMetric,
 }) => {
   return (
     <span
@@ -31,7 +34,7 @@ export const ThreatsDetected: React.FC<Props> = ({
         min-height: 160px;
       `}
     >
-      <ThreatsDetectedMetric from={from} to={to} />
+      <ThreatsDetectedMetric metric={threatsDetectedMetric} />
 
       <ComparePercentage
         currentCount={attackDiscoveryCount}

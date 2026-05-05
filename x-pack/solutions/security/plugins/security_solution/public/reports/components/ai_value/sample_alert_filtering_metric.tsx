@@ -8,26 +8,25 @@
 import React from 'react';
 import { EuiIcon } from '@elastic/eui';
 import type { MetricDatum } from '@elastic/charts';
+import { formatPercent } from './metrics';
 import * as i18n from './translations';
 import { SAMPLE_VALUE_METRICS } from './sample_data';
 import { SampleMetric } from './sample_metric';
 
 const ID = 'TimeSavedMetricQuery-metric';
 
-const valueFormatter = (v: number) => `${v}`;
-
 const icon: MetricDatum['icon'] = ({ width, height, color }) => (
-  <EuiIcon type="clock" fill={color} style={{ width, height }} aria-hidden={true} />
+  <EuiIcon type="chartLine" fill={color} style={{ width, height }} aria-hidden={true} />
 );
 
-const SampleTimeSavedMetricComponent: React.FC = () => (
+const SampleAlertFilteringMetricComponent: React.FC = () => (
   <SampleMetric
     id={ID}
-    title={i18n.TIME_SAVED}
-    value={SAMPLE_VALUE_METRICS.hoursSaved}
-    valueFormatter={valueFormatter}
+    title={i18n.FILTERING_RATE}
+    value={SAMPLE_VALUE_METRICS.filteredAlertsPerc}
+    valueFormatter={formatPercent}
     icon={icon}
   />
 );
 
-export const SampleTimeSavedMetric = React.memo(SampleTimeSavedMetricComponent);
+export const SampleAlertFilteringMetric = React.memo(SampleAlertFilteringMetricComponent);

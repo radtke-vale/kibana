@@ -25,6 +25,8 @@ interface Props {
   valueMetrics: ValueMetrics;
   valueMetricsCompare: ValueMetrics;
   timeSavedMetric: ReactNode;
+  filteringRateMetric: ReactNode;
+  threatsDetectedMetric: ReactNode;
 }
 
 export const AIValueReportLayout: React.FC<Props> = ({
@@ -37,6 +39,8 @@ export const AIValueReportLayout: React.FC<Props> = ({
   valueMetrics,
   valueMetricsCompare,
   timeSavedMetric,
+  filteringRateMetric,
+  threatsDetectedMetric,
 }) => {
   const {
     euiTheme: { colors },
@@ -52,7 +56,6 @@ export const AIValueReportLayout: React.FC<Props> = ({
       `}
     >
       <ExecutiveSummary
-        attackAlertIds={attackAlertIds}
         analystHourlyRate={analystHourlyRate}
         hasAttackDiscoveries={hasAttackDiscoveries}
         minutesPerAlert={minutesPerAlert}
@@ -61,6 +64,8 @@ export const AIValueReportLayout: React.FC<Props> = ({
         valueMetrics={valueMetrics}
         valueMetricsCompare={valueMetricsCompare}
         timeSavedMetric={timeSavedMetric}
+        filteringRateMetric={filteringRateMetric}
+        threatsDetectedMetric={threatsDetectedMetric}
       />
       <div
         css={css`

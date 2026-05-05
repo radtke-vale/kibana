@@ -5,32 +5,26 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React from 'react';
-
 import { css } from '@emotion/react';
 import { useEuiTheme } from '@elastic/eui';
-import { VisualizationContextMenuActions } from '../../../common/components/visualization_actions/types';
-import { useSpaceId } from '../../../common/hooks/use_space_id';
-import * as i18n from './translations';
-import { getThreatsDetectedMetricLensAttributes } from '../../../common/components/visualization_actions/lens_attributes/ai/threats_detected_metric';
-import { VisualizationEmbeddable } from '../../../common/components/visualization_actions/visualization_embeddable';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 
 interface Props {
-  from: string;
-  to: string;
+  metric: ReactNode;
 }
-const ID = 'ThreatsDetectedMetricQuery';
-const ThreatsDetectedMetricComponent: React.FC<Props> = ({ from, to }) => {
+
+const ThreatsDetectedMetricComponent: React.FC<Props> = ({ metric }) => {
   const {
     euiTheme: { colors },
   } = useEuiTheme();
   const aiValueExportContext = useAIValueExportContext();
   const isExportMode = aiValueExportContext?.isExportMode === true;
 
-  const spaceId = useSpaceId();
   return (
     <div
+      data-test-subj="threats-detected-metric-container"
       css={css`
         height: 100%;
         > * {
@@ -66,20 +60,7 @@ const ThreatsDetectedMetricComponent: React.FC<Props> = ({ from, to }) => {
         }
       `}
     >
-      <VisualizationEmbeddable
-        data-test-subj="threats-detected-metric"
-        getLensAttributes={(args) =>
-          getThreatsDetectedMetricLensAttributes({ ...args, spaceId: spaceId ?? 'default' })
-        }
-        timerange={{ from, to }}
-        id={`${ID}-area-embeddable`}
-        inspectTitle={i18n.THREATS_DETECTED}
-        withActions={[
-          VisualizationContextMenuActions.addToExistingCase,
-          VisualizationContextMenuActions.addToNewCase,
-          VisualizationContextMenuActions.inspect,
-        ]}
-      />
+      {metric}
     </div>
   );
 };

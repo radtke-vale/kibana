@@ -17,6 +17,10 @@ import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 import { LiveTimeSavedMetric } from './live_time_saved_metric';
 import { SampleTimeSavedMetric } from './sample_time_saved_metric';
+import { LiveAlertFilteringMetric } from './live_alert_filtering_metric';
+import { SampleAlertFilteringMetric } from './sample_alert_filtering_metric';
+import { LiveThreatsDetectedMetric } from './live_threats_detected_metric';
+import { SampleThreatsDetectedMetric } from './sample_threats_detected_metric';
 import { PageLoader } from '../../../common/components/page_loader';
 import {
   SAMPLE_ANALYST_HOURLY_RATE,
@@ -119,6 +123,15 @@ export const AIValueReport: React.FC<Props> = (props) => {
         timeSavedMetric={
           <LiveTimeSavedMetric from={from} to={to} minutesPerAlert={minutesPerAlert} />
         }
+        filteringRateMetric={
+          <LiveAlertFilteringMetric
+            attackAlertIds={attackAlertIds}
+            from={from}
+            to={to}
+            totalAlerts={valueMetrics.totalAlerts}
+          />
+        }
+        threatsDetectedMetric={<LiveThreatsDetectedMetric from={from} to={to} />}
       />
     );
   }
@@ -134,6 +147,8 @@ export const AIValueReport: React.FC<Props> = (props) => {
       valueMetrics={SAMPLE_VALUE_METRICS}
       valueMetricsCompare={SAMPLE_VALUE_METRICS_COMPARE}
       timeSavedMetric={<SampleTimeSavedMetric />}
+      filteringRateMetric={<SampleAlertFilteringMetric />}
+      threatsDetectedMetric={<SampleThreatsDetectedMetric />}
     />
   );
 };

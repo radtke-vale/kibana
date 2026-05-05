@@ -29,13 +29,14 @@ jest.mock('./metrics', () => ({
 const mockFormatPercent = formatPercent as jest.MockedFunction<typeof formatPercent>;
 const mockGetTimeRangeAsDays = getTimeRangeAsDays as jest.MockedFunction<typeof getTimeRangeAsDays>;
 
+const filteringRateMetric = <div data-test-subj="filtering-rate-metric" />;
+
 const defaultProps = {
-  attackAlertIds: ['alert-1', 'alert-2', 'alert-3'],
   filteredAlertsPerc: 75.5,
   filteredAlertsPercCompare: 60.0,
   from: '2023-01-01T00:00:00.000Z',
   to: '2023-01-31T23:59:59.999Z',
-  totalAlerts: 1000,
+  filteringRateMetric,
 };
 
 describe('FilteringRate', () => {
@@ -50,10 +51,7 @@ describe('FilteringRate', () => {
 
     expect(AlertFilteringMetric).toHaveBeenCalledWith(
       expect.objectContaining({
-        attackAlertIds: defaultProps.attackAlertIds,
-        totalAlerts: defaultProps.totalAlerts,
-        from: defaultProps.from,
-        to: defaultProps.to,
+        metric: filteringRateMetric,
       }),
       {}
     );

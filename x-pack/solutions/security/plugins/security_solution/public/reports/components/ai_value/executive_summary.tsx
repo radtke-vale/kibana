@@ -30,7 +30,6 @@ import { ThreatsDetected } from './threats_detected';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 
 interface Props {
-  attackAlertIds: string[];
   from: string;
   to: string;
   hasAttackDiscoveries: boolean;
@@ -39,10 +38,11 @@ interface Props {
   minutesPerAlert: number;
   analystHourlyRate: number;
   timeSavedMetric: ReactNode;
+  filteringRateMetric: ReactNode;
+  threatsDetectedMetric: ReactNode;
 }
 
 export const ExecutiveSummary: React.FC<Props> = ({
-  attackAlertIds,
   minutesPerAlert,
   analystHourlyRate,
   hasAttackDiscoveries,
@@ -51,6 +51,8 @@ export const ExecutiveSummary: React.FC<Props> = ({
   valueMetrics,
   valueMetricsCompare,
   timeSavedMetric,
+  filteringRateMetric,
+  threatsDetectedMetric,
 }) => {
   const { uiSettings } = useKibana().services;
   const [title, setTitle] = useState<string>(
@@ -205,12 +207,11 @@ export const ExecutiveSummary: React.FC<Props> = ({
           `}
         >
           <FilteringRate
-            attackAlertIds={attackAlertIds}
-            totalAlerts={valueMetrics.totalAlerts}
             filteredAlertsPerc={valueMetrics.filteredAlertsPerc}
             filteredAlertsPercCompare={valueMetricsCompare.filteredAlertsPerc}
             from={from}
             to={to}
+            filteringRateMetric={filteringRateMetric}
           />
         </EuiFlexItem>
         <EuiFlexItem
@@ -223,6 +224,7 @@ export const ExecutiveSummary: React.FC<Props> = ({
             attackDiscoveryCountCompare={valueMetricsCompare.attackDiscoveryCount}
             from={from}
             to={to}
+            threatsDetectedMetric={threatsDetectedMetric}
           />
         </EuiFlexItem>
       </EuiFlexGroup>

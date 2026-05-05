@@ -40,7 +40,6 @@ jest.mock('@kbn/kibana-react-plugin/public', () => ({
 }));
 
 const defaultProps = {
-  attackAlertIds: ['alert-1', 'alert-2', 'alert-3'],
   from: '2023-01-01T00:00:00Z',
   to: '2023-01-31T23:59:59Z',
   hasAttackDiscoveries: true,
@@ -67,6 +66,8 @@ const defaultProps = {
   minutesPerAlert: 5,
   analystHourlyRate: 100,
   timeSavedMetric: <div data-test-subj="mockTimeSavedMetricSlot" />,
+  filteringRateMetric: <div data-test-subj="mockFilteringRateMetricSlot" />,
+  threatsDetectedMetric: <div data-test-subj="mockThreatsDetectedMetricSlot" />,
 };
 
 describe('ExecutiveSummary', () => {
