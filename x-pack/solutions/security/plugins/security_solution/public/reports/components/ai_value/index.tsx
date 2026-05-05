@@ -6,17 +6,12 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { EuiHorizontalRule, useEuiTheme } from '@elastic/eui';
-import { css } from '@emotion/react';
 import dateMath from '@kbn/datemath';
 import {
   SECURITY_SOLUTION_DEFAULT_VALUE_REPORT_MINUTES,
   SECURITY_SOLUTION_DEFAULT_VALUE_REPORT_RATE,
 } from '@kbn/management-settings-ids';
-import { ValueReportSettings } from './value_report_settings';
-import { CostSavingsTrend } from './cost_savings_trend';
-import { ExecutiveSummary } from './executive_summary';
-import { AlertProcessing } from './alert_processing';
+import { AIValueReportLayout } from './ai_value_report_layout';
 import { useValueMetrics } from '../../hooks/use_value_metrics';
 import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
@@ -27,7 +22,7 @@ interface Props {
   to: string;
 }
 
-export const AIValueMetrics: React.FC<Props> = (props) => {
+export const AIValueReport: React.FC<Props> = (props) => {
   const { setHasAttackDiscoveries } = props;
   const { uiSettings } = useKibana().services;
   const exportContext = useAIValueExportContext();
@@ -97,77 +92,25 @@ export const AIValueMetrics: React.FC<Props> = (props) => {
     setHasAttackDiscoveries(hasAttackDiscoveries);
   }, [hasAttackDiscoveries, setHasAttackDiscoveries]);
 
-  const {
-    euiTheme: { colors },
-  } = useEuiTheme();
+  const layoutProps = {
+    attackAlertIds,
+    analystHourlyRate,
+    minutesPerAlert,
+    isLoading,
+    hasAttackDiscoveries,
+    from,
+    to,
+    valueMetrics,
+    valueMetricsCompare,
+  };
 
-  return (
-    <div
-      css={css`
-        background: ${colors.backgroundBaseSubdued};
-        width: 100%;
-        min-height: 100%;
-        border-radius: 8px;
-      `}
-    >
-      <ExecutiveSummary
-        attackAlertIds={attackAlertIds}
-        analystHourlyRate={analystHourlyRate}
-        hasAttackDiscoveries={hasAttackDiscoveries}
-        minutesPerAlert={minutesPerAlert}
-        isLoading={isLoading}
-        from={from}
-        to={to}
-        valueMetrics={valueMetrics}
-        valueMetricsCompare={valueMetricsCompare}
-      />
-      <div
-        css={css`
-          padding: 0 16px;
-        `}
-      >
-        <EuiHorizontalRule />
-      </div>
-      {(isLoading || hasAttackDiscoveries) && (
-        <>
-          <AlertProcessing
-            attackAlertIds={attackAlertIds}
-            isLoading={isLoading}
-            valueMetrics={valueMetrics}
-            from={from}
-            to={to}
-          />
-          <div
-            css={css`
-              padding: 0 16px;
-            `}
-          >
-            <EuiHorizontalRule />
-          </div>
-        </>
-      )}
-      {(isLoading || hasAttackDiscoveries) && (
-        <>
-          <CostSavingsTrend
-            analystHourlyRate={analystHourlyRate}
-            minutesPerAlert={minutesPerAlert}
-            from={from}
-            to={to}
-            isLoading={isLoading}
-          />
-          <div
-            css={css`
-              padding: 0 16px;
-            `}
-          >
-            <EuiHorizontalRule />
-          </div>
-        </>
-      )}
-      <ValueReportSettings
-        analystHourlyRate={analystHourlyRate}
-        minutesPerAlert={minutesPerAlert}
-      />
-    </div>
-  );
+  const showSample = !isLoading && !hasAttackDiscoveries;
+
+  if (showSample) {
+    // Sample report branch: will be wired with fixture data and sample viz slots.
+    // For now renders the same layout as the live branch.
+    return <AIValueReportLayout {...layoutProps} />;
+  }
+
+  return <AIValueReportLayout {...layoutProps} />;
 };
