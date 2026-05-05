@@ -68,6 +68,7 @@ const defaultProps = {
   timeSavedMetric: <div data-test-subj="mockTimeSavedMetricSlot" />,
   filteringRateMetric: <div data-test-subj="mockFilteringRateMetricSlot" />,
   threatsDetectedMetric: <div data-test-subj="mockThreatsDetectedMetricSlot" />,
+  costSavingsMetric: <div data-test-subj="mockCostSavingsMetricSlot" />,
 };
 
 describe('ExecutiveSummary', () => {

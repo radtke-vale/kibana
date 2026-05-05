@@ -121,6 +121,13 @@ export const COST_SAVED_DESC = i18n.translate(
   }
 );
 
+export const COST_SAVINGS_TITLE = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.costSavingsTitle',
+  {
+    defaultMessage: 'Cost Savings',
+  }
+);
+
 export const ALERT_PROCESSING_TITLE = i18n.translate(
   'xpack.securitySolution.reports.aiValue.alertProcessingTitle',
   {

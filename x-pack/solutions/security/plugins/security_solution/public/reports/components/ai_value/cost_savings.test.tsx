@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { CostSavings } from './cost_savings';
 import { CostSavingsMetric } from './cost_savings_metric';
 import { ComparePercentageBadge } from './compare_percentage_badge';
@@ -30,12 +30,11 @@ const mockGetTimeRangeAsDays = getTimeRangeAsDays as jest.MockedFunction<typeof 
 const mockFormatDollars = formatDollars as jest.MockedFunction<typeof formatDollars>;
 
 const defaultProps = {
-  minutesPerAlert: 10,
-  analystHourlyRate: 50,
   from: '2023-01-01T00:00:00.000Z',
   to: '2023-01-31T23:59:59.999Z',
   costSavings: 5000,
   costSavingsCompare: 4000,
+  costSavingsMetric: <div data-test-subj="mock-cost-savings-metric-slot" />,
 };
 
 describe('CostSavings', () => {
@@ -51,10 +50,7 @@ describe('CostSavings', () => {
 
     expect(CostSavingsMetric).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: defaultProps.from,
-        to: defaultProps.to,
-        analystHourlyRate: defaultProps.analystHourlyRate,
-        minutesPerAlert: defaultProps.minutesPerAlert,
+        metric: defaultProps.costSavingsMetric,
       }),
       {}
     );
@@ -71,6 +67,11 @@ describe('CostSavings', () => {
       }),
       {}
     );
+  });
+
+  it('forwards the costSavingsMetric slot to CostSavingsMetric', () => {
+    render(<CostSavings {...defaultProps} />);
+    expect(screen.getByTestId('mock-cost-savings-metric')).toBeInTheDocument();
   });
 
   it('calls getTimeRangeAsDays with correct parameters', () => {

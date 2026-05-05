@@ -21,6 +21,8 @@ import { LiveAlertFilteringMetric } from './live_alert_filtering_metric';
 import { SampleAlertFilteringMetric } from './sample_alert_filtering_metric';
 import { LiveThreatsDetectedMetric } from './live_threats_detected_metric';
 import { SampleThreatsDetectedMetric } from './sample_threats_detected_metric';
+import { LiveCostSavingsMetric } from './live_cost_savings_metric';
+import { SampleCostSavingsMetric } from './sample_cost_savings_metric';
 import { PageLoader } from '../../../common/components/page_loader';
 import {
   SAMPLE_ANALYST_HOURLY_RATE,
@@ -132,6 +134,14 @@ export const AIValueReport: React.FC<Props> = (props) => {
           />
         }
         threatsDetectedMetric={<LiveThreatsDetectedMetric from={from} to={to} />}
+        costSavingsMetric={
+          <LiveCostSavingsMetric
+            from={from}
+            to={to}
+            minutesPerAlert={minutesPerAlert}
+            analystHourlyRate={analystHourlyRate}
+          />
+        }
       />
     );
   }
@@ -149,6 +159,7 @@ export const AIValueReport: React.FC<Props> = (props) => {
       timeSavedMetric={<SampleTimeSavedMetric />}
       filteringRateMetric={<SampleAlertFilteringMetric />}
       threatsDetectedMetric={<SampleThreatsDetectedMetric />}
+      costSavingsMetric={<SampleCostSavingsMetric />}
     />
   );
 };

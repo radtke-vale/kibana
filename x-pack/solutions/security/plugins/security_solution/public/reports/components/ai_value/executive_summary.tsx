@@ -40,6 +40,7 @@ interface Props {
   timeSavedMetric: ReactNode;
   filteringRateMetric: ReactNode;
   threatsDetectedMetric: ReactNode;
+  costSavingsMetric: ReactNode;
 }
 
 export const ExecutiveSummary: React.FC<Props> = ({
@@ -53,6 +54,7 @@ export const ExecutiveSummary: React.FC<Props> = ({
   timeSavedMetric,
   filteringRateMetric,
   threatsDetectedMetric,
+  costSavingsMetric,
 }) => {
   const { uiSettings } = useKibana().services;
   const [title, setTitle] = useState<string>(
@@ -176,12 +178,11 @@ export const ExecutiveSummary: React.FC<Props> = ({
           data-test-subj="executiveSummarySideStats"
         >
           <CostSavings
-            analystHourlyRate={analystHourlyRate}
             costSavings={valueMetrics.costSavings}
             costSavingsCompare={valueMetricsCompare.costSavings}
-            minutesPerAlert={minutesPerAlert}
             from={from}
             to={to}
+            costSavingsMetric={costSavingsMetric}
           />
         </EuiFlexItem>
       </EuiFlexGroup>

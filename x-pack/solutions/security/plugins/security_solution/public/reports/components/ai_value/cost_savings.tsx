@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React, { useMemo } from 'react';
 import { EuiPanel, useEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
@@ -14,21 +15,19 @@ import { CostSavingsMetric } from './cost_savings_metric';
 import * as i18n from './translations';
 
 interface Props {
-  minutesPerAlert: number;
-  analystHourlyRate: number;
   from: string;
   to: string;
   costSavings: number;
   costSavingsCompare: number;
+  costSavingsMetric: ReactNode;
 }
 
 export const CostSavings: React.FC<Props> = ({
-  minutesPerAlert,
-  analystHourlyRate,
   from,
   to,
   costSavings,
   costSavingsCompare,
+  costSavingsMetric,
 }) => {
   const {
     euiTheme: { colors },
@@ -45,12 +44,7 @@ export const CostSavings: React.FC<Props> = ({
       hasShadow={false}
       paddingSize="none"
     >
-      <CostSavingsMetric
-        from={from}
-        to={to}
-        analystHourlyRate={analystHourlyRate}
-        minutesPerAlert={minutesPerAlert}
-      />
+      <CostSavingsMetric metric={costSavingsMetric} />
       <ComparePercentageBadge
         positionForLens
         colorFamily="bright"
