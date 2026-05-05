@@ -18,8 +18,15 @@ import { ExecutiveSummary } from './executive_summary';
 import { AlertProcessing } from './alert_processing';
 import { CostSavingsTrend } from './cost_savings_trend';
 import { ValueReportSettings } from './value_report_settings';
+import { PageLoader } from '../../../common/components/page_loader';
 import type { StartServices } from '../../../types';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
+import {
+  SAMPLE_ANALYST_HOURLY_RATE,
+  SAMPLE_MINUTES_PER_ALERT,
+  SAMPLE_VALUE_METRICS,
+  SAMPLE_VALUE_METRICS_COMPARE,
+} from './sample_data';
 
 // Mock dependencies
 jest.mock('../../../common/lib/kibana', () => ({
@@ -44,6 +51,10 @@ jest.mock('./cost_savings_trend', () => ({
 
 jest.mock('./value_report_settings', () => ({
   ValueReportSettings: jest.fn(() => <div data-test-subj="mock-value-report-settings" />),
+}));
+
+jest.mock('../../../common/components/page_loader', () => ({
+  PageLoader: jest.fn(() => <div data-test-subj="mock-page-loader" />),
 }));
 
 jest.mock('../../providers/ai_value/export_provider', () => ({
@@ -174,9 +185,9 @@ describe('AIValueReport', () => {
     expect(defaultProps.setHasAttackDiscoveries).toHaveBeenCalledWith(true);
   });
 
-  it('handles no attack discoveries correctly', () => {
+  it('renders the sample report with sample data when there are no attack discoveries', () => {
     mockUseValueMetrics.mockReturnValue({
-      attackAlertIds: [],
+      attackAlertIds: ['alert-1', 'alert-2'],
       isLoading: false,
       valueMetrics: {
         ...mockValueMetrics,
@@ -188,6 +199,48 @@ describe('AIValueReport', () => {
     render(<AIValueReport {...defaultProps} />);
 
     expect(defaultProps.setHasAttackDiscoveries).toHaveBeenCalledWith(false);
+
+    expect(ExecutiveSummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasAttackDiscoveries: false,
+        attackAlertIds: [],
+        analystHourlyRate: SAMPLE_ANALYST_HOURLY_RATE,
+        minutesPerAlert: SAMPLE_MINUTES_PER_ALERT,
+        valueMetrics: SAMPLE_VALUE_METRICS,
+        valueMetricsCompare: SAMPLE_VALUE_METRICS_COMPARE,
+      }),
+      {}
+    );
+
+    expect(AlertProcessing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attackAlertIds: [],
+        valueMetrics: SAMPLE_VALUE_METRICS,
+      }),
+      {}
+    );
+
+    expect(CostSavingsTrend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analystHourlyRate: SAMPLE_ANALYST_HOURLY_RATE,
+        minutesPerAlert: SAMPLE_MINUTES_PER_ALERT,
+      }),
+      {}
+    );
+  });
+
+  it('renders only the page loader while metrics are loading', () => {
+    mockUseValueMetrics.mockReturnValue({
+      attackAlertIds: [],
+      isLoading: true,
+      valueMetrics: mockValueMetrics,
+      valueMetricsCompare: mockValueMetricsCompare,
+    });
+
+    render(<AIValueReport {...defaultProps} />);
+
+    expect(PageLoader).toHaveBeenCalled();
+    expect(ExecutiveSummary).not.toHaveBeenCalled();
     expect(AlertProcessing).not.toHaveBeenCalled();
     expect(CostSavingsTrend).not.toHaveBeenCalled();
   });

@@ -19,7 +19,6 @@ interface Props {
   attackAlertIds: string[];
   analystHourlyRate: number;
   minutesPerAlert: number;
-  isLoading: boolean;
   hasAttackDiscoveries: boolean;
   from: string;
   to: string;
@@ -32,7 +31,6 @@ export const AIValueReportLayout: React.FC<Props> = ({
   attackAlertIds,
   analystHourlyRate,
   minutesPerAlert,
-  isLoading,
   hasAttackDiscoveries,
   from,
   to,
@@ -58,7 +56,6 @@ export const AIValueReportLayout: React.FC<Props> = ({
         analystHourlyRate={analystHourlyRate}
         hasAttackDiscoveries={hasAttackDiscoveries}
         minutesPerAlert={minutesPerAlert}
-        isLoading={isLoading}
         from={from}
         to={to}
         valueMetrics={valueMetrics}
@@ -72,42 +69,32 @@ export const AIValueReportLayout: React.FC<Props> = ({
       >
         <EuiHorizontalRule />
       </div>
-      {(isLoading || hasAttackDiscoveries) && (
-        <>
-          <AlertProcessing
-            attackAlertIds={attackAlertIds}
-            isLoading={isLoading}
-            valueMetrics={valueMetrics}
-            from={from}
-            to={to}
-          />
-          <div
-            css={css`
-              padding: 0 16px;
-            `}
-          >
-            <EuiHorizontalRule />
-          </div>
-        </>
-      )}
-      {(isLoading || hasAttackDiscoveries) && (
-        <>
-          <CostSavingsTrend
-            analystHourlyRate={analystHourlyRate}
-            minutesPerAlert={minutesPerAlert}
-            from={from}
-            to={to}
-            isLoading={isLoading}
-          />
-          <div
-            css={css`
-              padding: 0 16px;
-            `}
-          >
-            <EuiHorizontalRule />
-          </div>
-        </>
-      )}
+      <AlertProcessing
+        attackAlertIds={attackAlertIds}
+        valueMetrics={valueMetrics}
+        from={from}
+        to={to}
+      />
+      <div
+        css={css`
+          padding: 0 16px;
+        `}
+      >
+        <EuiHorizontalRule />
+      </div>
+      <CostSavingsTrend
+        analystHourlyRate={analystHourlyRate}
+        minutesPerAlert={minutesPerAlert}
+        from={from}
+        to={to}
+      />
+      <div
+        css={css`
+          padding: 0 16px;
+        `}
+      >
+        <EuiHorizontalRule />
+      </div>
       <ValueReportSettings
         analystHourlyRate={analystHourlyRate}
         minutesPerAlert={minutesPerAlert}

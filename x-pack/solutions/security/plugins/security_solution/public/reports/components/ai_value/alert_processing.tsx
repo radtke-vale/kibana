@@ -17,18 +17,11 @@ import { AlertProcessingDonut } from './alert_processing_donut_lens';
 interface Props {
   valueMetrics: ValueMetrics;
   attackAlertIds: string[];
-  isLoading: boolean;
   from: string;
   to: string;
 }
 
-export const AlertProcessing: React.FC<Props> = ({
-  valueMetrics,
-  isLoading,
-  from,
-  to,
-  attackAlertIds,
-}) => {
+export const AlertProcessing: React.FC<Props> = ({ valueMetrics, from, to, attackAlertIds }) => {
   const {
     euiTheme: { size },
   } = useEuiTheme();
@@ -61,7 +54,6 @@ export const AlertProcessing: React.FC<Props> = ({
         >
           <AlertProcessingDonut attackAlertIds={attackAlertIds} from={from} to={to} />
           <AlertsProcessingTable
-            isLoading={isLoading}
             filteredAlerts={valueMetrics.filteredAlerts}
             escalatedAlerts={escalatedAlerts}
             filteredAlertsPerc={formatPercent(valueMetrics.filteredAlertsPerc)}
@@ -69,7 +61,7 @@ export const AlertProcessing: React.FC<Props> = ({
           />
         </EuiFlexItem>
         <EuiFlexItem>
-          <AlertProcessingKeyInsight isLoading={isLoading} valueMetrics={valueMetrics} />
+          <AlertProcessingKeyInsight valueMetrics={valueMetrics} />
         </EuiFlexItem>
       </EuiFlexGroup>
       <EuiSpacer size="l" />

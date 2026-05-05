@@ -30,7 +30,6 @@ import { CostSavingsKeyInsight } from './cost_savings_key_insight';
 
 interface Props {
   from: string;
-  isLoading: boolean;
   to: string;
   minutesPerAlert: number;
   analystHourlyRate: number;
@@ -46,7 +45,6 @@ const ID = 'CostSavingsTrendQuery';
 const CostSavingsTrendComponent: React.FC<Props> = ({
   minutesPerAlert,
   analystHourlyRate,
-  isLoading,
   from,
   to,
 }) => {
@@ -125,7 +123,7 @@ const CostSavingsTrendComponent: React.FC<Props> = ({
             max-width: ${isSmall ? 'auto' : '600px'};
           `}
         >
-          <CostSavingsKeyInsight isLoading={isLoading} lensResponse={lensResponse} />
+          <CostSavingsKeyInsight isLoading={false} lensResponse={lensResponse} />
         </EuiFlexItem>
       </EuiFlexGroup>
     </div>

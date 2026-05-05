@@ -65,7 +65,6 @@ const mockUseSignalIndexWithDefault = useSignalIndexWithDefault as jest.MockedFu
 const defaultProps = {
   from: '2023-01-01T00:00:00.000Z',
   to: '2023-01-31T23:59:59.999Z',
-  isLoading: false,
   minutesPerAlert: 10,
   analystHourlyRate: 100,
 };

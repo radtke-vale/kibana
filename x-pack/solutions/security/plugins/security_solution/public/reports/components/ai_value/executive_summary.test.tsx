@@ -44,7 +44,6 @@ const defaultProps = {
   from: '2023-01-01T00:00:00Z',
   to: '2023-01-31T23:59:59Z',
   hasAttackDiscoveries: true,
-  isLoading: false,
   valueMetrics: {
     costSavings: 1000,
     costSavingsCompare: 800,
@@ -84,12 +83,14 @@ describe('ExecutiveSummary', () => {
     expect(screen.getByTestId('mockFilteringRate')).toBeInTheDocument();
   });
 
-  it('renders no attacks message when hasAttackDiscoveries is false', () => {
+  it('renders no attacks message and still shows the stats cards when hasAttackDiscoveries is false', () => {
     render(<ExecutiveSummary {...defaultProps} hasAttackDiscoveries={false} />);
     expect(screen.getByTestId('executiveSummaryNoAttacks').textContent).toMatch(
       /no attack discoveries/i
     );
-    expect(screen.queryByTestId('executiveSummaryStatsList')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('executiveSummarySideStats')).not.toBeInTheDocument();
+    expect(screen.getByTestId('executiveSummarySideStats')).toBeInTheDocument();
+    expect(screen.getByTestId('mockCostSavings')).toBeInTheDocument();
+    expect(screen.getByTestId('mockTimeSaved')).toBeInTheDocument();
+    expect(screen.getByTestId('mockFilteringRate')).toBeInTheDocument();
   });
 });

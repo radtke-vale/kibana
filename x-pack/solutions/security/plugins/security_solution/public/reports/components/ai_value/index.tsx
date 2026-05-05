@@ -17,6 +17,13 @@ import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 import { LiveTimeSavedMetric } from './live_time_saved_metric';
 import { SampleTimeSavedMetric } from './sample_time_saved_metric';
+import { PageLoader } from '../../../common/components/page_loader';
+import {
+  SAMPLE_ANALYST_HOURLY_RATE,
+  SAMPLE_MINUTES_PER_ALERT,
+  SAMPLE_VALUE_METRICS,
+  SAMPLE_VALUE_METRICS_COMPARE,
+} from './sample_data';
 
 interface Props {
   setHasAttackDiscoveries: React.Dispatch<boolean>;
@@ -94,30 +101,39 @@ export const AIValueReport: React.FC<Props> = (props) => {
     setHasAttackDiscoveries(hasAttackDiscoveries);
   }, [hasAttackDiscoveries, setHasAttackDiscoveries]);
 
-  const showSample = !isLoading && !hasAttackDiscoveries;
+  if (isLoading) {
+    return <PageLoader />;
+  }
 
-  const layoutProps = {
-    attackAlertIds,
-    analystHourlyRate,
-    minutesPerAlert,
-    isLoading,
-    hasAttackDiscoveries,
-    from,
-    to,
-    valueMetrics,
-    valueMetricsCompare,
-  };
-
-  if (showSample) {
-    return <AIValueReportLayout {...layoutProps} timeSavedMetric={<SampleTimeSavedMetric />} />;
+  if (hasAttackDiscoveries) {
+    return (
+      <AIValueReportLayout
+        attackAlertIds={attackAlertIds}
+        analystHourlyRate={analystHourlyRate}
+        minutesPerAlert={minutesPerAlert}
+        hasAttackDiscoveries
+        from={from}
+        to={to}
+        valueMetrics={valueMetrics}
+        valueMetricsCompare={valueMetricsCompare}
+        timeSavedMetric={
+          <LiveTimeSavedMetric from={from} to={to} minutesPerAlert={minutesPerAlert} />
+        }
+      />
+    );
   }
 
   return (
     <AIValueReportLayout
-      {...layoutProps}
-      timeSavedMetric={
-        <LiveTimeSavedMetric from={from} to={to} minutesPerAlert={minutesPerAlert} />
-      }
+      attackAlertIds={[]}
+      analystHourlyRate={SAMPLE_ANALYST_HOURLY_RATE}
+      minutesPerAlert={SAMPLE_MINUTES_PER_ALERT}
+      hasAttackDiscoveries={false}
+      from={from}
+      to={to}
+      valueMetrics={SAMPLE_VALUE_METRICS}
+      valueMetricsCompare={SAMPLE_VALUE_METRICS_COMPARE}
+      timeSavedMetric={<SampleTimeSavedMetric />}
     />
   );
 };

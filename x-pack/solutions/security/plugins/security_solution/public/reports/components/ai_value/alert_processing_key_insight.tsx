@@ -11,7 +11,6 @@ import {
   EuiFlexItem,
   EuiHorizontalRule,
   EuiIcon,
-  EuiSkeletonText,
   EuiSpacer,
   EuiText,
   EuiTitle,
@@ -23,11 +22,10 @@ import type { ValueMetrics } from './metrics';
 import { formatThousands, formatPercent } from './metrics';
 
 interface Props {
-  isLoading: boolean;
   valueMetrics: ValueMetrics;
 }
 
-export const AlertProcessingKeyInsight: React.FC<Props> = ({ isLoading, valueMetrics }) => {
+export const AlertProcessingKeyInsight: React.FC<Props> = ({ valueMetrics }) => {
   const {
     euiTheme: { size },
   } = useEuiTheme();
@@ -64,7 +62,12 @@ export const AlertProcessingKeyInsight: React.FC<Props> = ({ isLoading, valueMet
           data-test-subj="alertProcessingKeyInsightsGreetingGroup"
         >
           <EuiFlexItem grow={false}>
-            <EuiIcon type="logoElastic" size="m" data-test-subj="alertProcessingKeyInsightsLogo" />
+            <EuiIcon
+              type="logoElastic"
+              size="m"
+              data-test-subj="alertProcessingKeyInsightsLogo"
+              aria-hidden={true}
+            />
           </EuiFlexItem>
           <EuiFlexItem>
             <EuiTitle size="xs">
@@ -74,61 +77,52 @@ export const AlertProcessingKeyInsight: React.FC<Props> = ({ isLoading, valueMet
         </EuiFlexGroup>
 
         <EuiSpacer size="m" />
-        {isLoading ? (
-          <>
-            <EuiSkeletonText lines={3} size="s" isLoading={true} />
-            <EuiSkeletonText lines={3} size="s" isLoading={true} />
-            <EuiHorizontalRule />
-            <EuiSkeletonText lines={2} size="s" isLoading={true} />
-          </>
-        ) : (
-          <EuiText
-            size="s"
-            css={css`
-              line-height: 1.6em;
-            `}
-            color="subdued"
-          >
-            <ul>
-              <li
-                css={css`
-                  margin-bottom: 5px;
-                `}
-              >
-                <strong>
-                  {i18n.FILTERED_ALERTS_1({
-                    percentage: filteredPercentage,
-                    count: filteredCount,
-                  })}
-                </strong>
-                {isFilteredAll
-                  ? i18n.FILTERED_ALERTS_2_NONE
-                  : isFilteredNone
-                  ? i18n.FILTERED_ALERTS_2_ALL
-                  : i18n.FILTERED_ALERTS_2}
-              </li>
-              <li>
-                <strong>
-                  {(isEscalatedAll
-                    ? i18n.ESCALATED_ALERTS_1_ALL
-                    : isEscalatedNone
-                    ? i18n.ESCALATED_ALERTS_1_NONE
-                    : i18n.ESCALATED_ALERTS_1)({
-                    percentage: escalatedPercentage,
-                    count: escalatedCount,
-                  })}
-                </strong>
-                {isEscalatedAll
-                  ? i18n.ESCALATED_ALERTS_2_ALL
+        <EuiText
+          size="s"
+          css={css`
+            line-height: 1.6em;
+          `}
+          color="subdued"
+        >
+          <ul>
+            <li
+              css={css`
+                margin-bottom: 5px;
+              `}
+            >
+              <strong>
+                {i18n.FILTERED_ALERTS_1({
+                  percentage: filteredPercentage,
+                  count: filteredCount,
+                })}
+              </strong>
+              {isFilteredAll
+                ? i18n.FILTERED_ALERTS_2_NONE
+                : isFilteredNone
+                ? i18n.FILTERED_ALERTS_2_ALL
+                : i18n.FILTERED_ALERTS_2}
+            </li>
+            <li>
+              <strong>
+                {(isEscalatedAll
+                  ? i18n.ESCALATED_ALERTS_1_ALL
                   : isEscalatedNone
-                  ? i18n.ESCALATED_ALERTS_2_NONE
-                  : i18n.ESCALATED_ALERTS_2}
-              </li>
-            </ul>
-            <EuiHorizontalRule />
-            <p>{i18n.MINIMIZE_ALERT_FATIGUE}</p>
-          </EuiText>
-        )}
+                  ? i18n.ESCALATED_ALERTS_1_NONE
+                  : i18n.ESCALATED_ALERTS_1)({
+                  percentage: escalatedPercentage,
+                  count: escalatedCount,
+                })}
+              </strong>
+              {isEscalatedAll
+                ? i18n.ESCALATED_ALERTS_2_ALL
+                : isEscalatedNone
+                ? i18n.ESCALATED_ALERTS_2_NONE
+                : i18n.ESCALATED_ALERTS_2}
+            </li>
+          </ul>
+          <EuiHorizontalRule />
+          <p>{i18n.MINIMIZE_ALERT_FATIGUE}</p>
+        </EuiText>
       </span>
     </div>
   );
