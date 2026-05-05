@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import React, { useState, useCallback, useMemo } from 'react';
 import { i18n as i18nLib } from '@kbn/i18n';
 import {
@@ -40,6 +40,7 @@ interface Props {
   valueMetricsCompare: ValueMetrics;
   minutesPerAlert: number;
   analystHourlyRate: number;
+  timeSavedMetric: ReactNode;
 }
 
 export const ExecutiveSummary: React.FC<Props> = ({
@@ -52,6 +53,7 @@ export const ExecutiveSummary: React.FC<Props> = ({
   to,
   valueMetrics,
   valueMetricsCompare,
+  timeSavedMetric,
 }) => {
   const { uiSettings } = useKibana().services;
   const [title, setTitle] = useState<string>(
@@ -201,11 +203,11 @@ export const ExecutiveSummary: React.FC<Props> = ({
               `}
             >
               <TimeSaved
-                minutesPerAlert={minutesPerAlert}
                 hoursSaved={valueMetrics.hoursSaved}
                 hoursSavedCompare={valueMetricsCompare.hoursSaved}
                 from={from}
                 to={to}
+                timeSavedMetric={timeSavedMetric}
               />
             </EuiFlexItem>
             {/* Alert filtering rate card */}

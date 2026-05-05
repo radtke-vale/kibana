@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React, { useMemo } from 'react';
 import { css } from '@emotion/react';
 import { getTimeRangeAsDays, formatThousands } from './metrics';
@@ -17,15 +18,15 @@ interface Props {
   hoursSavedCompare: number;
   from: string;
   to: string;
-  minutesPerAlert: number;
+  timeSavedMetric: ReactNode;
 }
 
 export const TimeSaved: React.FC<Props> = ({
-  minutesPerAlert,
   hoursSaved,
   hoursSavedCompare,
   from,
   to,
+  timeSavedMetric,
 }) => {
   const timerangeAsDays = useMemo(() => getTimeRangeAsDays({ from, to }), [from, to]);
 
@@ -35,7 +36,7 @@ export const TimeSaved: React.FC<Props> = ({
         min-height: 160px;
       `}
     >
-      <TimeSavedMetric minutesPerAlert={minutesPerAlert} from={from} to={to} />
+      <TimeSavedMetric metric={timeSavedMetric} />
       <ComparePercentage
         positionForLens
         currentCount={hoursSaved}

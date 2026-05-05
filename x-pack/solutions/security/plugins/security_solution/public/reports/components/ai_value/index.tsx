@@ -15,6 +15,8 @@ import { AIValueReportLayout } from './ai_value_report_layout';
 import { useValueMetrics } from '../../hooks/use_value_metrics';
 import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
+import { LiveTimeSavedMetric } from './live_time_saved_metric';
+import { SampleTimeSavedMetric } from './sample_time_saved_metric';
 
 interface Props {
   setHasAttackDiscoveries: React.Dispatch<boolean>;
@@ -92,6 +94,8 @@ export const AIValueReport: React.FC<Props> = (props) => {
     setHasAttackDiscoveries(hasAttackDiscoveries);
   }, [hasAttackDiscoveries, setHasAttackDiscoveries]);
 
+  const showSample = !isLoading && !hasAttackDiscoveries;
+
   const layoutProps = {
     attackAlertIds,
     analystHourlyRate,
@@ -104,13 +108,16 @@ export const AIValueReport: React.FC<Props> = (props) => {
     valueMetricsCompare,
   };
 
-  const showSample = !isLoading && !hasAttackDiscoveries;
-
   if (showSample) {
-    // Sample report branch: will be wired with fixture data and sample viz slots.
-    // For now renders the same layout as the live branch.
-    return <AIValueReportLayout {...layoutProps} />;
+    return <AIValueReportLayout {...layoutProps} timeSavedMetric={<SampleTimeSavedMetric />} />;
   }
 
-  return <AIValueReportLayout {...layoutProps} />;
+  return (
+    <AIValueReportLayout
+      {...layoutProps}
+      timeSavedMetric={
+        <LiveTimeSavedMetric from={from} to={to} minutesPerAlert={minutesPerAlert} />
+      }
+    />
+  );
 };

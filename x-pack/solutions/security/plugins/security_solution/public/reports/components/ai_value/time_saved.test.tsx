@@ -12,7 +12,6 @@ import { TimeSavedMetric } from './time_saved_metric';
 import { ComparePercentage } from './compare_percentage';
 import { getTimeRangeAsDays, formatThousands } from './metrics';
 
-// Mock dependencies
 jest.mock('./time_saved_metric', () => ({
   TimeSavedMetric: jest.fn(() => <div data-test-subj="mock-time-saved-metric" />),
 }));
@@ -29,12 +28,14 @@ jest.mock('./metrics', () => ({
 const mockGetTimeRangeAsDays = getTimeRangeAsDays as jest.MockedFunction<typeof getTimeRangeAsDays>;
 const mockFormatThousands = formatThousands as jest.MockedFunction<typeof formatThousands>;
 
+const timeSavedMetric = <div data-test-subj="provided-time-saved-metric" />;
+
 const defaultProps = {
   hoursSaved: 120,
   hoursSavedCompare: 100,
   from: '2023-01-01T00:00:00.000Z',
   to: '2023-01-31T23:59:59.999Z',
-  minutesPerAlert: 10,
+  timeSavedMetric,
 };
 
 describe('TimeSaved', () => {
@@ -44,17 +45,19 @@ describe('TimeSaved', () => {
     mockFormatThousands.mockReturnValue('100');
   });
 
-  it('renders the component with correct structure', () => {
+  it('forwards the timeSavedMetric slot to TimeSavedMetric', () => {
     render(<TimeSaved {...defaultProps} />);
 
     expect(TimeSavedMetric).toHaveBeenCalledWith(
       expect.objectContaining({
-        minutesPerAlert: defaultProps.minutesPerAlert,
-        from: defaultProps.from,
-        to: defaultProps.to,
+        metric: timeSavedMetric,
       }),
       {}
     );
+  });
+
+  it('passes compare props to ComparePercentage', () => {
+    render(<TimeSaved {...defaultProps} />);
 
     expect(ComparePercentage).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -5,45 +5,23 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo } from 'react';
-
+import type { ReactNode } from 'react';
+import React from 'react';
 import { css } from '@emotion/react';
 import { useEuiTheme } from '@elastic/eui';
-import { PageScope } from '../../../data_view_manager/constants';
-import { useSignalIndexWithDefault } from '../../hooks/use_signal_index_with_default';
-import {
-  type GetLensAttributes,
-  VisualizationContextMenuActions,
-} from '../../../common/components/visualization_actions/types';
-import { getTimeSavedMetricLensAttributes } from '../../../common/components/visualization_actions/lens_attributes/ai/time_saved_metric';
-import * as i18n from './translations';
-import { VisualizationEmbeddable } from '../../../common/components/visualization_actions/visualization_embeddable';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 
 interface Props {
-  from: string;
-  to: string;
-  minutesPerAlert: number;
+  metric: ReactNode;
 }
-const ID = 'TimeSavedMetricQuery';
 
-/**
- * Renders a Lens embeddable metric visualization showing the estimated time saved
- * based on the number of AI filtered alerts and minutes saved per alert for a given time range.
- */
-const TimeSavedMetricComponent: React.FC<Props> = ({ from, to, minutesPerAlert }) => {
+const TimeSavedMetricComponent: React.FC<Props> = ({ metric }) => {
   const {
     euiTheme: { colors },
   } = useEuiTheme();
-  const timerange = useMemo(() => ({ from, to }), [from, to]);
-  const signalIndexName = useSignalIndexWithDefault();
   const aiValueExportContext = useAIValueExportContext();
   const isExportMode = aiValueExportContext?.isExportMode === true;
 
-  const getLensAttributes = useCallback<GetLensAttributes>(
-    (args) => getTimeSavedMetricLensAttributes({ ...args, minutesPerAlert, signalIndexName }),
-    [minutesPerAlert, signalIndexName]
-  );
   return (
     <div
       data-test-subj="time-saved-metric-container"
@@ -82,19 +60,7 @@ const TimeSavedMetricComponent: React.FC<Props> = ({ from, to, minutesPerAlert }
         }
       `}
     >
-      <VisualizationEmbeddable
-        data-test-subj="time-saved-metric"
-        getLensAttributes={getLensAttributes}
-        timerange={timerange}
-        id={`${ID}-metric`}
-        inspectTitle={i18n.TIME_SAVED}
-        scopeId={PageScope.alerts}
-        withActions={[
-          VisualizationContextMenuActions.addToExistingCase,
-          VisualizationContextMenuActions.addToNewCase,
-          VisualizationContextMenuActions.inspect,
-        ]}
-      />
+      {metric}
     </div>
   );
 };

@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import type { ReactNode } from 'react';
 import React from 'react';
 import { EuiHorizontalRule, useEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
@@ -24,6 +25,7 @@ interface Props {
   to: string;
   valueMetrics: ValueMetrics;
   valueMetricsCompare: ValueMetrics;
+  timeSavedMetric: ReactNode;
 }
 
 export const AIValueReportLayout: React.FC<Props> = ({
@@ -36,6 +38,7 @@ export const AIValueReportLayout: React.FC<Props> = ({
   to,
   valueMetrics,
   valueMetricsCompare,
+  timeSavedMetric,
 }) => {
   const {
     euiTheme: { colors },
@@ -60,6 +63,7 @@ export const AIValueReportLayout: React.FC<Props> = ({
         to={to}
         valueMetrics={valueMetrics}
         valueMetricsCompare={valueMetricsCompare}
+        timeSavedMetric={timeSavedMetric}
       />
       <div
         css={css`

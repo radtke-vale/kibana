@@ -67,6 +67,7 @@ const defaultProps = {
   },
   minutesPerAlert: 5,
   analystHourlyRate: 100,
+  timeSavedMetric: <div data-test-subj="mockTimeSavedMetricSlot" />,
 };
 
 describe('ExecutiveSummary', () => {
