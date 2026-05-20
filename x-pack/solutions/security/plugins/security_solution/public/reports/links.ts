@@ -7,12 +7,7 @@
 
 import { i18n } from '@kbn/i18n';
 import { SECURITY_UI_SHOW_PRIVILEGE } from '@kbn/security-solution-features/constants';
-import {
-  AI_VALUE_PATH,
-  ATTACK_DISCOVERY_FEATURE_ID,
-  SECURITY_FEATURE_ID,
-  SecurityPageName,
-} from '../../common/constants';
+import { AI_VALUE_PATH, SecurityPageName } from '../../common/constants';
 import { AI_VALUE_DASHBOARD } from '../app/translations';
 import type { LinkItem } from '../common/links/types';
 
@@ -24,13 +19,13 @@ export const aiValueLinks: LinkItem = {
   }),
   path: AI_VALUE_PATH,
   licenseType: 'enterprise',
-  capabilities: [
-    [
-      SECURITY_UI_SHOW_PRIVILEGE,
-      `${ATTACK_DISCOVERY_FEATURE_ID}.attack-discovery`,
-      `${SECURITY_FEATURE_ID}.socManagement`,
-    ],
-  ],
+  // Capability gate is intentionally relaxed to `siem.show` so users on the
+  // serverless Essentials tier (where neither `attackDiscovery` nor
+  // `aiValueReport` PLIs are present and so the related sub-feature
+  // capabilities are unregistered) can land on the page and see the upsell
+  // CTA. The full SOC-management / attack-discovery gating is enforced inside
+  // `pages/ai_value.tsx`.
+  capabilities: [[SECURITY_UI_SHOW_PRIVILEGE]],
   globalSearchKeywords: [
     i18n.translate('xpack.securitySolution.appLinks.aiValue', {
       defaultMessage: 'AI Value',

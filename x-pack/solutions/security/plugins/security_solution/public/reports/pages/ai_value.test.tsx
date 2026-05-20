@@ -18,6 +18,8 @@ import { useHasSecurityCapability } from '../../helper_hooks';
 import { TestProviders } from '../../common/mock/test_providers';
 import { AIValueReport } from '../components/ai_value';
 import { useAIValueExportContext } from '../providers/ai_value/export_provider';
+import { useProductFeatureKeys } from '../../common/hooks/use_product_feature_keys';
+import { ProductFeatureKey } from '@kbn/security-solution-features/keys';
 
 jest.mock('../../common/hooks/search_bar/use_sync_timerange_url_param', () => ({
   useSyncTimerangeUrlParam: jest.fn(),
@@ -41,6 +43,10 @@ jest.mock('../../data_view_manager/hooks/use_data_view', () => ({
 
 jest.mock('../../helper_hooks', () => ({
   useHasSecurityCapability: jest.fn(),
+}));
+
+jest.mock('../../common/hooks/use_product_feature_keys', () => ({
+  useProductFeatureKeys: jest.fn(),
 }));
 
 jest.mock('../../common/hooks/use_selector', () => ({
@@ -84,6 +90,13 @@ const mockUseHasSecurityCapability = useHasSecurityCapability as jest.MockedFunc
 >;
 const mockAIValueReport = AIValueReport as jest.MockedFunction<typeof AIValueReport>;
 const mockUseAIValueExportContext = useAIValueExportContext as jest.Mock;
+const mockUseProductFeatureKeys = useProductFeatureKeys as jest.MockedFunction<
+  typeof useProductFeatureKeys
+>;
+
+const withAiValueReportPLI = () =>
+  mockUseProductFeatureKeys.mockReturnValue(new Set([ProductFeatureKey.aiValueReport]));
+const withoutAiValueReportPLI = () => mockUseProductFeatureKeys.mockReturnValue(new Set());
 
 const sourcererDataView = {
   loading: false,
@@ -126,9 +139,10 @@ describe('AIValue', () => {
     mockUseDataView.mockReturnValue({ status: 'ready', dataView: {} as never });
     mockUseHasSecurityCapability.mockReturnValue(true);
     mockUseAIValueExportContext.mockReturnValue({ isExportMode: false });
+    withAiValueReportPLI();
   });
 
-  it('renders NoPrivileges when the user lacks the socManagement capability', () => {
+  it('renders NoPrivileges when the user has the PLI but lacks the socManagement capability', () => {
     mockUseHasSecurityCapability.mockReturnValue(false);
 
     renderAIValue();
@@ -151,6 +165,41 @@ describe('AIValue', () => {
 
     expect(screen.getByTestId('aiValuePage')).toBeInTheDocument();
     expect(screen.queryByTestId('header-page')).not.toBeInTheDocument();
+  });
+
+  describe('when the user lacks the aiValueReport PLI (serverless Essentials)', () => {
+    beforeEach(() => {
+      withoutAiValueReportPLI();
+    });
+
+    it('renders the page (not NoPrivileges) even when socManagement is missing', () => {
+      mockUseHasSecurityCapability.mockReturnValue(false);
+
+      renderAIValue();
+
+      expect(screen.getByTestId('aiValuePage')).toBeInTheDocument();
+      expect(screen.queryByTestId('no-privileges')).not.toBeInTheDocument();
+    });
+
+    it('passes forceUpgradeCta=true to AIValueReport', () => {
+      renderAIValue();
+
+      expect(mockAIValueReport.mock.calls.at(-1)?.[0].forceUpgradeCta).toBe(true);
+    });
+
+    it('renders a disabled Export PDF button', () => {
+      renderAIValue();
+
+      expect(screen.getByTestId('aiValueExportButton')).toBeDisabled();
+    });
+  });
+
+  describe('when the user has the aiValueReport PLI', () => {
+    it('passes forceUpgradeCta=false to AIValueReport', () => {
+      renderAIValue();
+
+      expect(mockAIValueReport.mock.calls.at(-1)?.[0].forceUpgradeCta).toBe(false);
+    });
   });
 
   describe('isSourcererLoading derivation', () => {

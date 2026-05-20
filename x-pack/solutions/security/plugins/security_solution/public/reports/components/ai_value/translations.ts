@@ -402,3 +402,32 @@ export const NO_RESULTS_BODY = i18n.translate(
       'Adjust the time range in the top bar to see available results for the Value Report.',
   }
 );
+
+export const UPGRADE_CTA_TITLE = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.upgradeCta.title',
+  {
+    defaultMessage: 'Value Reports is available on the Complete plan',
+  }
+);
+
+export const UPGRADE_CTA_TEXT = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.upgradeCta.text',
+  {
+    defaultMessage:
+      'See how much time and money AI triage save your team, analyst hours reclaimed, costs reduced and real threats surfaced. Available on the Complete plan.',
+  }
+);
+
+export const UPGRADE_CTA_BUTTON = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.upgradeCta.button',
+  {
+    defaultMessage: 'Upgrade plan',
+  }
+);
+
+export const UPGRADE_CTA_DISABLED_TOOLTIP = i18n.translate(
+  'xpack.securitySolution.reports.aiValue.upgradeCta.disabledTooltip',
+  {
+    defaultMessage: 'Available on the Complete plan',
+  }
+);

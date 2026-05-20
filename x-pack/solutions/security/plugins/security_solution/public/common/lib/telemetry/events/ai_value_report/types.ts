@@ -10,6 +10,8 @@ export enum AIValueReportEventTypes {
   AIValueReportExportExecution = 'AI Value Report Export Execution',
   AIValueReportExportError = 'AI Value Report Export Error',
   AIValueReportExportInsightVerified = 'AI Value Report Export Insight Regenerated',
+  AIValueReportUpsellBannerViewed = 'AI Value Report Upsell Banner Viewed',
+  AIValueReportUpsellCtaClicked = 'AI Value Report Upsell CTA Clicked',
 }
 
 interface ReportAIValueReportExportErrorParams {
@@ -21,10 +23,23 @@ interface ReportAIValueReportExportInsightVerifiedParams {
   shouldRegenerate: boolean;
 }
 
+export type UpsellDestination = 'cloud_project' | 'pricing_page';
+
+interface ReportAIValueReportUpsellBannerViewedParams {
+  productTier: 'essentials';
+}
+
+interface ReportAIValueReportUpsellCtaClickedParams {
+  productTier: 'essentials';
+  destination: UpsellDestination;
+}
+
 export interface AIValueReportTelemetryEventsMap {
   [AIValueReportEventTypes.AIValueReportExportExecution]: {};
   [AIValueReportEventTypes.AIValueReportExportError]: ReportAIValueReportExportErrorParams;
   [AIValueReportEventTypes.AIValueReportExportInsightVerified]: ReportAIValueReportExportInsightVerifiedParams;
+  [AIValueReportEventTypes.AIValueReportUpsellBannerViewed]: ReportAIValueReportUpsellBannerViewedParams;
+  [AIValueReportEventTypes.AIValueReportUpsellCtaClicked]: ReportAIValueReportUpsellCtaClickedParams;
 }
 
 export interface AIValueReportTelemetryEvent {

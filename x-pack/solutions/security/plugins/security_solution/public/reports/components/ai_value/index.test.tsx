@@ -56,6 +56,10 @@ jest.mock('../../../common/components/links', () => ({
   })),
 }));
 
+jest.mock('./upgrade_plan_banner', () => ({
+  UpgradePlanBanner: () => <div data-test-subj="aiValueUpgradePlanBanner" />,
+}));
+
 const mockUseKibana = useKibana as jest.Mock;
 const mockUseValueMetrics = useValueMetrics as jest.MockedFunction<typeof useValueMetrics>;
 const mockUseHasEverUsedAttackDiscovery = useHasEverUsedAttackDiscovery as jest.MockedFunction<
@@ -331,6 +335,45 @@ describe('AIValueReport', () => {
     render(<AIValueReport {...defaultProps} />);
 
     expect(setReportInputMock).not.toHaveBeenCalled();
+  });
+
+  describe('when forceUpgradeCta is true', () => {
+    it('renders the upgrade plan banner instead of the Attack Discovery sample banner', () => {
+      render(<AIValueReport {...defaultProps} forceUpgradeCta={true} />);
+
+      expect(screen.getByTestId('aiValueUpgradePlanBanner')).toBeInTheDocument();
+      expect(screen.queryByTestId('aiValueSampleAttackDiscoveryBanner')).not.toBeInTheDocument();
+    });
+
+    it('renders the sample data layout with SAMPLE_VALUE_METRICS even when live data exists', () => {
+      // live data with discoveries — would normally render the real layout
+      mockUseValueMetrics.mockReturnValue({
+        attackAlertIds: ['alert-1', 'alert-2'],
+        isLoading: false,
+        valueMetrics: mockValueMetrics,
+        valueMetricsCompare: mockValueMetricsCompare,
+      });
+
+      render(<AIValueReport {...defaultProps} forceUpgradeCta={true} />);
+
+      expect(screen.getByTestId('aiValueSampleDataBadge')).toBeInTheDocument();
+      expect(mockAIValueReportLayout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSample: true,
+          from: SAMPLE_FROM,
+          to: SAMPLE_TO,
+          valueMetrics: SAMPLE_VALUE_METRICS,
+          valueMetricsCompare: SAMPLE_VALUE_METRICS_COMPARE,
+        }),
+        {}
+      );
+    });
+
+    it('reports no live data to setHasReportData when forced into upsell mode', () => {
+      render(<AIValueReport {...defaultProps} forceUpgradeCta={true} />);
+
+      expect(defaultProps.setHasReportData).toHaveBeenCalledWith(false);
+    });
   });
 
   it('handles different settings values correctly', () => {

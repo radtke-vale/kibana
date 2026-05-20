@@ -47,8 +47,43 @@ export const aiValueReportExportInsightVerifiedEvent: AIValueReportTelemetryEven
   },
 };
 
+export const aiValueReportUpsellBannerViewedEvent: AIValueReportTelemetryEvent = {
+  eventType: AIValueReportEventTypes.AIValueReportUpsellBannerViewed,
+  schema: {
+    productTier: {
+      type: 'keyword',
+      _meta: {
+        description: 'The product tier of the user that saw the upsell banner',
+        optional: false,
+      },
+    },
+  },
+};
+
+export const aiValueReportUpsellCtaClickedEvent: AIValueReportTelemetryEvent = {
+  eventType: AIValueReportEventTypes.AIValueReportUpsellCtaClicked,
+  schema: {
+    productTier: {
+      type: 'keyword',
+      _meta: {
+        description: 'The product tier of the user that clicked the upsell CTA',
+        optional: false,
+      },
+    },
+    destination: {
+      type: 'keyword',
+      _meta: {
+        description: 'The URL destination the user was sent to (cloud_project|pricing_page)',
+        optional: false,
+      },
+    },
+  },
+};
+
 export const aiValueReportTelemetryEvents = [
   aiValueReportExportErrorEvent,
   AIValueReportExportExecutionEvent,
   aiValueReportExportInsightVerifiedEvent,
+  aiValueReportUpsellBannerViewedEvent,
+  aiValueReportUpsellCtaClickedEvent,
 ];

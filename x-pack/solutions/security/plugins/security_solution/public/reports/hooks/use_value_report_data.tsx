@@ -21,6 +21,12 @@ interface Props {
   to: string;
   minutesPerAlert: number;
   analystHourlyRate: number;
+  /**
+   * When true, skip the underlying API hooks and always return the sample
+   * dataset. Used by the serverless Essentials upsell path where the user
+   * doesn't have access to the underlying APIs.
+   */
+  skip?: boolean;
 }
 
 export interface ValueReportData {
@@ -50,6 +56,7 @@ export const useValueReportData = ({
   to,
   minutesPerAlert,
   analystHourlyRate,
+  skip = false,
 }: Props): ValueReportData => {
   const {
     attackAlertIds,
@@ -64,12 +71,12 @@ export const useValueReportData = ({
   const isLoading = isLoadingMetrics || isLoadingHistory;
 
   const isSample =
-    !isLoading && valueMetrics.attackDiscoveryCount === 0 && !hasEverUsedAttackDiscovery;
+    skip || (!isLoading && valueMetrics.attackDiscoveryCount === 0 && !hasEverUsedAttackDiscovery);
 
   return useMemo<ValueReportData>(() => {
     if (isSample) {
       return {
-        isLoading,
+        isLoading: skip ? false : isLoading,
         isSample: true,
         hasEverUsedAttackDiscovery,
         attackAlertIds: [],
@@ -94,6 +101,7 @@ export const useValueReportData = ({
       valueMetricsCompare,
     };
   }, [
+    skip,
     isLoading,
     isSample,
     hasEverUsedAttackDiscovery,

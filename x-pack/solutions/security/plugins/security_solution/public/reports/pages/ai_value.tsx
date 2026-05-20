@@ -5,12 +5,14 @@
  * 2.0.
  */
 import React, { useState, useRef, useMemo } from 'react';
-import { EuiButtonEmpty, EuiFlexGroup, EuiFlexItem } from '@elastic/eui';
+import { EuiButtonEmpty, EuiFlexGroup, EuiFlexItem, EuiToolTip } from '@elastic/eui';
 import type { DocLinks } from '@kbn/doc-links';
 import { css } from '@emotion/css';
+import { ProductFeatureKey } from '@kbn/security-solution-features/keys';
 import { useSyncTimerangeUrlParam } from '../../common/hooks/search_bar/use_sync_timerange_url_param';
 import { ValueReportExporter } from '../components/ai_value/value_report_exporter';
-import { EXPORT_REPORT } from '../components/ai_value/translations';
+import { EXPORT_REPORT, UPGRADE_CTA_DISABLED_TOOLTIP } from '../components/ai_value/translations';
+import { useProductFeatureKeys } from '../../common/hooks/use_product_feature_keys';
 import { useDeepEqualSelector } from '../../common/hooks/use_selector';
 import { SuperDatePicker } from '../../common/components/super_date_picker';
 import { AIValueReport } from '../components/ai_value';
@@ -59,6 +61,9 @@ const BaseComponent = () => {
   const isSourcererLoading = newDataViewPickerEnabled ? status !== 'ready' : oldIsSourcererLoading;
 
   const hasSocManagementCapability = useHasSecurityCapability('socManagement');
+  const productFeatureKeys = useProductFeatureKeys();
+  const hasValueReportPLI = productFeatureKeys.has(ProductFeatureKey.aiValueReport);
+  const isEssentialsUpsell = !hasValueReportPLI;
 
   const [hasReportData, setHasReportData] = useState(false);
   const exportPDFRef = useRef<(() => void) | null>(null);
@@ -78,38 +83,41 @@ const BaseComponent = () => {
     timeRange: timerange,
   });
 
-  const exportButton = useMemo(
-    () =>
-      isServerless ? (
-        <EuiButtonEmpty
-          className="exportPdfButton"
-          data-test-subj="aiValueExportButton"
-          iconType="export"
-          onClick={() => exportPDFRef.current?.()}
-          size="s"
-          aria-label={EXPORT_REPORT}
-          isDisabled={!hasReportData}
-        >
-          {EXPORT_REPORT}
-        </EuiButtonEmpty>
-      ) : (
-        <EuiButtonEmpty
-          className="exportPdfButton"
-          data-test-subj="aiValueExportButton"
-          iconType="export"
-          buttonRef={setExportButtonElement}
-          size="s"
-          aria-label={EXPORT_REPORT}
-          onClick={toggleContextMenu}
-          isDisabled={!hasReportData && !isExportEnabled}
-        >
-          {EXPORT_REPORT}
-        </EuiButtonEmpty>
-      ),
-    [isServerless, isExportEnabled, hasReportData, toggleContextMenu]
-  );
+  const exportButton = useMemo(() => {
+    const button = isServerless ? (
+      <EuiButtonEmpty
+        className="exportPdfButton"
+        data-test-subj="aiValueExportButton"
+        iconType="export"
+        onClick={() => exportPDFRef.current?.()}
+        size="s"
+        aria-label={EXPORT_REPORT}
+        isDisabled={isEssentialsUpsell || !hasReportData}
+      >
+        {EXPORT_REPORT}
+      </EuiButtonEmpty>
+    ) : (
+      <EuiButtonEmpty
+        className="exportPdfButton"
+        data-test-subj="aiValueExportButton"
+        iconType="export"
+        buttonRef={setExportButtonElement}
+        size="s"
+        aria-label={EXPORT_REPORT}
+        onClick={toggleContextMenu}
+        isDisabled={isEssentialsUpsell || (!hasReportData && !isExportEnabled)}
+      >
+        {EXPORT_REPORT}
+      </EuiButtonEmpty>
+    );
 
-  if (!hasSocManagementCapability) {
+    if (isEssentialsUpsell) {
+      return <EuiToolTip content={UPGRADE_CTA_DISABLED_TOOLTIP}>{button}</EuiToolTip>;
+    }
+    return button;
+  }, [isServerless, isExportEnabled, hasReportData, toggleContextMenu, isEssentialsUpsell]);
+
+  if (!isEssentialsUpsell && !hasSocManagementCapability) {
     return <NoPrivileges docLinkSelector={(docLinks: DocLinks) => docLinks.siem.privileges} />;
   }
 
@@ -156,6 +164,7 @@ const BaseComponent = () => {
                   to={to}
                   setHasReportData={setHasReportData}
                   isSourcererLoading={isSourcererLoading}
+                  forceUpgradeCta={isEssentialsUpsell}
                 />
               );
             }}

@@ -32,6 +32,7 @@ import { useValueReportData } from '../../hooks/use_value_report_data';
 import { useKibana } from '../../../common/lib/kibana';
 import { useAIValueExportContext } from '../../providers/ai_value/export_provider';
 import { PageLoader } from '../../../common/components/page_loader';
+import { UpgradePlanBanner } from './upgrade_plan_banner';
 import * as i18n from './translations';
 
 interface Props {
@@ -39,10 +40,16 @@ interface Props {
   isSourcererLoading: boolean;
   from: string;
   to: string;
+  /**
+   * When true, render the sample report layout with the "Upgrade plan" banner
+   * instead of the default Attack Discovery sample banner. Used for users on
+   * the serverless Essentials tier who lack the `aiValueReport` PLI.
+   */
+  forceUpgradeCta?: boolean;
 }
 
 export const AIValueReport: React.FC<Props> = (props) => {
-  const { setHasReportData, isSourcererLoading } = props;
+  const { setHasReportData, isSourcererLoading, forceUpgradeCta = false } = props;
   const { settings } = useKibana().services;
   const exportContext = useAIValueExportContext();
   const setReportInputForExportContext = exportContext?.setReportInput;
@@ -77,7 +84,13 @@ export const AIValueReport: React.FC<Props> = (props) => {
     [settings.client]
   );
 
-  const data = useValueReportData({ from, to, minutesPerAlert, analystHourlyRate });
+  const data = useValueReportData({
+    from,
+    to,
+    minutesPerAlert,
+    analystHourlyRate,
+    skip: forceUpgradeCta,
+  });
 
   useEffect(() => {
     if (data.isLoading || data.isSample || !setReportInputForExportContext || isSourcererLoading) {
@@ -105,24 +118,28 @@ export const AIValueReport: React.FC<Props> = (props) => {
     // to show the full report layout and provide an example of how the metrics are calculated
     return (
       <>
-        <AnnouncementBanner
-          data-test-subj="aiValueSampleAttackDiscoveryBanner"
-          title={i18n.RUN_ATTACK_DISCOVERY_TEXT}
-          headingElement="h3"
-          text={i18n.GET_STARTED_ATTACK_DISCOVERY_TEXT}
-          media={<EuiIcon type={analyticsSpeedAcceleration} size="original" aria-hidden={true} />}
-          actionProps={{
-            primary: {
-              children: i18n.ATTACK_DISCOVERY_LINK,
-              href: attackDiscoveryHref,
-              iconType: 'popout',
-              iconSide: 'left',
-              target: '_blank',
-              rel: 'noopener noreferrer',
-              'data-test-subj': 'sampleAttackDiscoveryCtaButton',
-            },
-          }}
-        />
+        {forceUpgradeCta ? (
+          <UpgradePlanBanner />
+        ) : (
+          <AnnouncementBanner
+            data-test-subj="aiValueSampleAttackDiscoveryBanner"
+            title={i18n.RUN_ATTACK_DISCOVERY_TEXT}
+            headingElement="h3"
+            text={i18n.GET_STARTED_ATTACK_DISCOVERY_TEXT}
+            media={<EuiIcon type={analyticsSpeedAcceleration} size="original" aria-hidden={true} />}
+            actionProps={{
+              primary: {
+                children: i18n.ATTACK_DISCOVERY_LINK,
+                href: attackDiscoveryHref,
+                iconType: 'popout',
+                iconSide: 'left',
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                'data-test-subj': 'sampleAttackDiscoveryCtaButton',
+              },
+            }}
+          />
+        )}
         <EuiSpacer size="l" />
         <EuiPanel hasBorder={true} borderRadius="m" color="transparent" paddingSize="l">
           <EuiFlexGroup responsive={false} alignItems="center" justifyContent="spaceBetween">
