@@ -16,3 +16,4 @@ export const plugin = (context: PluginInitializerContext): Plugin => new Plugin(
 
 export type { PluginSetup, PluginStart };
 export { Plugin };
+export { AIValueReport } from './reports/components/ai_value';

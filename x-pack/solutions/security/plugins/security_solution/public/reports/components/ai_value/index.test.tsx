@@ -197,6 +197,34 @@ describe('AIValueReport', () => {
     expect(defaultProps.setIsSampleMode).toHaveBeenCalledWith(true);
   });
 
+  it('uses the injected sampleBanner instead of the default banner in sample state', () => {
+    mockUseValueMetrics.mockReturnValue({
+      attackAlertIds: [],
+      hasNoCurrentDiscoveries: true,
+      isLoading: false,
+      valueMetrics: {
+        ...mockValueMetrics,
+        attackDiscoveryCount: 0,
+      },
+      valueMetricsCompare: mockValueMetricsCompare,
+    });
+    mockuseHasLatelyUsedAttackDiscovery.mockReturnValue({
+      hasLatelyUsedAttackDiscovery: false,
+      isLoading: false,
+    });
+
+    render(
+      <AIValueReport
+        {...defaultProps}
+        sampleBanner={<div data-test-subj="aiValueEssentialsUpgradeBanner" />}
+      />
+    );
+
+    expect(screen.getByTestId('aiValueEssentialsUpgradeBanner')).toBeInTheDocument();
+    expect(screen.queryByTestId('aiValueSampleAttackDiscoveryBanner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('aiValueSampleDataBadge')).toBeInTheDocument();
+  });
+
   it('renders the empty state when the feature was used before but the window has no discoveries', () => {
     mockUseValueMetrics.mockReturnValue({
       attackAlertIds: [],
