@@ -160,6 +160,7 @@ describe('AIValueReport', () => {
       to: defaultProps.to,
       minutesPerAlert: 10,
       analystHourlyRate: 50,
+      enabled: true,
     });
   });
 
@@ -399,6 +400,7 @@ describe('AIValueReport', () => {
       to: defaultProps.to,
       minutesPerAlert: 5,
       analystHourlyRate: 75,
+      enabled: true,
     });
   });
 });
