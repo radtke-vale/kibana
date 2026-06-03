@@ -28,6 +28,7 @@ export const AIValueReportUpsellPage: React.FC = () => (
         to="now/d"
         setHasReportData={noop}
         setIsDatePickerDisabled={noop}
+        setIsSampleMode={noop}
         isSourcererLoading={false}
         sampleBanner={<AIValueReportUpgradeBanner />}
         forceSampleData={true}
