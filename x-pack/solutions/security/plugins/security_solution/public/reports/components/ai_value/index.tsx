@@ -63,8 +63,8 @@ const AIValueReportContent: React.FC<AIValueReportContentProps> = ({
     deepLinkId: SecurityPageName.attackDiscovery,
   });
 
-  // When exporting/scheduling, forwardedState can include relative date-math strings
-  // (e.g. now-7d, now). Resolve them to a deterministic absolute range for this run.
+  // Resolve date-math strings (e.g. now-30d/d, now) to absolute ISO strings.
+  // forwardedState overrides propFrom/propTo when exporting/scheduling.
   const forceNow = useMemo(() => new Date(), []);
   const { from, to } = useMemo(() => {
     if (exportContext?.forwardedState) {
@@ -77,8 +77,8 @@ const AIValueReportContent: React.FC<AIValueReportContentProps> = ({
       };
     }
     return {
-      from: propFrom,
-      to: propTo,
+      from: dateMath.parse(propFrom, { forceNow })?.toISOString() ?? propFrom,
+      to: dateMath.parse(propTo, { forceNow, roundUp: true })?.toISOString() ?? propTo,
     };
   }, [propFrom, propTo, exportContext?.forwardedState, forceNow]);
 
