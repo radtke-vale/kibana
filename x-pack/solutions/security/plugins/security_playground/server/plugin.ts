@@ -30,14 +30,16 @@ export class SecurityPlaygroundPlugin
     >
 {
   private readonly logger: Logger;
+  private readonly kibanaVersion: string;
 
   constructor(initializerContext: PluginInitializerContext) {
     this.logger = initializerContext.logger.get();
+    this.kibanaVersion = initializerContext.env.packageInfo.version;
   }
 
   public setup(core: CoreSetup<SecurityPlaygroundStartPlugins>): SecurityPlaygroundSetupContract {
     const router = core.http.createRouter();
-    registerProvisionRoutes(router, core, this.logger);
+    registerProvisionRoutes(router, core, this.logger, this.kibanaVersion);
     this.logger.debug('Security Playground plugin setup complete');
   }
 

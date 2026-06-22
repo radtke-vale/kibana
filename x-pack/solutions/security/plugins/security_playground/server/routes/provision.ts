@@ -132,7 +132,8 @@ const emit = (stream: PassThrough, obj: Record<string, unknown>) => {
 export const registerProvisionRoutes = (
   router: IRouter,
   core: CoreSetup<SecurityPlaygroundStartPlugins>,
-  logger: Logger
+  logger: Logger,
+  kibanaVersion: string
 ) => {
   // POST /internal/security_playground/provision — streams NDJSON progress
   router.post(
@@ -156,14 +157,16 @@ export const registerProvisionRoutes = (
 
       // Run provision asynchronously and pipe progress onto the stream.
       // Do NOT await — let the stream carry the progress.
-      provisionAsync(stream, core, request, currentUserEsClient, logger).catch((err: Error) => {
-        logger.error(`Provision failed: ${err.message}`);
-        try {
-          emit(stream, { phase: 'error', status: 'error', message: err.message });
-        } finally {
-          stream.end();
+      provisionAsync(stream, core, request, currentUserEsClient, logger, kibanaVersion).catch(
+        (err: Error) => {
+          logger.error(`Provision failed: ${err.message}`);
+          try {
+            emit(stream, { phase: 'error', status: 'error', message: err.message });
+          } finally {
+            stream.end();
+          }
         }
-      });
+      );
 
       return response.ok({
         body: stream,
@@ -222,6 +225,31 @@ export const registerProvisionRoutes = (
           // Index already gone
         }
 
+        // 4. Delete per-stream index templates.
+        for (const streamName of Object.values(EVENT_INDICES)) {
+          const shortName = streamName.replace('sample-data-', '');
+          try {
+            await esClient.indices.deleteIndexTemplate({
+              name: `sample-data-${shortName}@template`,
+            });
+          } catch {
+            // 404 = never created or already deleted
+          }
+        }
+
+        // 5. Delete shared component templates (only after all per-stream templates removed).
+        for (const ct of ['sample-data@mappings', 'sample-data@lifecycle'] as const) {
+          try {
+            await esClient.cluster.deleteComponentTemplate({ name: ct });
+          } catch {
+            // 404 = fine
+          }
+        }
+
+        // Per-space ui settings (securitySolution:defaultIndex, defaultIndex) are stored
+        // as a 'config' saved object namespaced to SPACE_ID. The spacesClient.delete call
+        // above cascades to all saved objects in that namespace, so no explicit removal needed.
+
         logger.info('Security playground cleanup complete.');
         return response.ok({ body: { deleted: true } });
       } catch (err: unknown) {
@@ -242,7 +270,8 @@ async function provisionAsync(
   core: CoreSetup<SecurityPlaygroundStartPlugins>,
   request: KibanaRequest,
   currentUserEsClient: ElasticsearchClient,
-  logger: Logger
+  logger: Logger,
+  kibanaVersion: string
 ) {
   const [coreStart, plugins] = await core.getStartServices();
   const spacesClient = plugins.spaces.spacesService.createSpacesClient(request);
@@ -270,7 +299,16 @@ async function provisionAsync(
   emit(stream, { phase: 'space', status: 'done', spaceId: SPACE_ID });
 
   // -------------------------------------------------------------------------
-  // Pre-step: Ensure the alerts index template + data stream exist BEFORE rules
+  // Pre-step A: Write per-space ui settings so the Security app's init flow does
+  // not overwrite the playground data view title with the global logs-* pattern
+  // on first browser visit (initialize_security_data_views merges the
+  // securitySolution:defaultIndex ui setting into the data view title on every
+  // cold start; scoping it here to sample-data-* prevents that collision).
+  // -------------------------------------------------------------------------
+  await ensurePlaygroundUiSettings(coreStart, kibanaVersion, logger);
+
+  // -------------------------------------------------------------------------
+  // Pre-step B: Ensure the alerts index template + data stream exist BEFORE rules
   // are installed. Rule installation for siem.queryRule types may trigger the
   // alerting plugin to create .alerts-security.alerts-{spaceId}. If the index
   // template is not in place first, ES uses dynamic mapping and makes
@@ -439,41 +477,79 @@ async function provisionAsync(
 }
 
 // ---------------------------------------------------------------------------
-// Ensure the space-scoped raw-event data streams exist.
+// Ensure the sample-data event data streams exist with correct mappings.
 //
-// In a dev cluster without the Elastic Endpoint Fleet integration the streams
-// won't exist yet. We install a minimal index template (priority 1 so Fleet's
-// real template at 100+ wins when present) then create the data stream.
+// Installs two shared component templates (idempotent upserts):
+//   sample-data@mappings  — re-composes ecs@mappings so ECS dynamic templates apply
+//                           (e.g. source.ip → ip, not text+keyword)
+//   sample-data@lifecycle — 30-day DSL retention
+//
+// Each stream gets a per-stream composable index template at priority 200.
+// No Fleet template covers sample-data-* so we assert ownership outright.
 // ---------------------------------------------------------------------------
 async function ensureEventDataStreams(
   esClient: ElasticsearchClient,
   logger: Logger
 ): Promise<void> {
+  // Upsert shared component templates once for all three streams.
+  try {
+    await esClient.cluster.putComponentTemplate({
+      name: 'sample-data@mappings',
+      template: { mappings: {} },
+      _meta: { description: 'Security playground — ECS mapping hook', managed: false },
+    });
+    await esClient.cluster.putComponentTemplate({
+      name: 'sample-data@lifecycle',
+      template: { lifecycle: { data_retention: '30d' } },
+      _meta: { description: 'Security playground — 30-day retention', managed: false },
+    });
+  } catch (err: unknown) {
+    logger.warn(
+      `Could not upsert sample-data component templates: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
+
+  // Detect whether the built-in ecs@mappings component template is present.
+  // It ships with Elasticsearch 8.x+ but may be absent on stripped-down dev clusters.
+  let hasEcsMappings = false;
+  try {
+    await esClient.cluster.getComponentTemplate({ name: 'ecs@mappings' });
+    hasEcsMappings = true;
+  } catch {
+    logger.debug(
+      'ecs@mappings component template not found — ECS dynamic templates will not apply'
+    );
+  }
+  const composedOf = hasEcsMappings
+    ? ['ecs@mappings', 'sample-data@mappings', 'sample-data@lifecycle']
+    : ['sample-data@mappings', 'sample-data@lifecycle'];
+
   for (const streamName of Object.values(EVENT_INDICES)) {
-    // Check whether the data stream already exists.
     let exists = false;
     try {
       const existing = await esClient.indices.getDataStream({ name: streamName });
       exists = existing.data_streams.length > 0;
     } catch {
-      // getDataStream throws 404 when the stream doesn't exist — fall through to create it
+      // 404 — stream doesn't exist yet
     }
 
     if (!exists) {
-      // Install a minimal composable index template (priority 1 so Fleet wins).
-      const templateName = `poc-${streamName}`;
+      const shortName = streamName.replace('sample-data-', ''); // process | network | file
+      const templateName = `sample-data-${shortName}@template`;
       try {
         await esClient.indices.putIndexTemplate({
           name: templateName,
           index_patterns: [streamName],
           data_stream: {},
-          priority: 1,
-          _meta: { description: 'PoC sample data — safe to delete', managed: false },
+          priority: 200,
+          composed_of: composedOf,
+          _meta: { description: 'Security playground sample data', managed: false },
         });
         await esClient.indices.createDataStream({ name: streamName });
         logger.debug(`Created data stream ${streamName}`);
       } catch (err: unknown) {
-        // Non-fatal — if we can't create it, the bulk errors will show in phase logs
         logger.warn(
           `Could not create data stream ${streamName}: ${
             err instanceof Error ? err.message : String(err)
@@ -618,6 +694,44 @@ async function ensureAlertsIndex(esClient: ElasticsearchClient, logger: Logger):
 }
 
 // ---------------------------------------------------------------------------
+// Write per-space ui settings for the playground space.
+//
+// The Security app's initialize_security_data_views flow reads
+// securitySolution:defaultIndex from the per-space ui settings and merges it
+// into the data view title on every cold start (if the patterns differ it
+// overwrites the data view). Writing sample-data-* here prevents that from
+// reverting the playground data view to the global logs-* default.
+//
+// The 'config' saved object type is a hidden SO type; createInternalRepository
+// must be called with ['config'] so the repository is permitted to access it.
+//
+// kibanaVersion is the Kibana package version string (e.g. '9.0.0') — the same
+// string used as the 'config' SO id by Kibana's internal ui settings service.
+// ---------------------------------------------------------------------------
+async function ensurePlaygroundUiSettings(
+  coreStart: CoreStart,
+  kibanaVersion: string,
+  logger: Logger
+): Promise<void> {
+  try {
+    const soRepo = coreStart.savedObjects.createInternalRepository(['config']);
+    const settings = {
+      'securitySolution:defaultIndex': ['sample-data-*'],
+      defaultIndex: `security-solution-${SPACE_ID}`,
+    };
+    await soRepo.update('config', kibanaVersion, settings, {
+      namespace: SPACE_ID,
+      upsert: settings,
+    });
+    logger.debug(`Set per-space ui settings for ${SPACE_ID}`);
+  } catch (err: unknown) {
+    logger.warn(
+      `Could not set playground ui settings: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Create the security solution data views in the sample-playground space.
 //
 // The security alert table and sourcerer both require two data views to exist
@@ -641,7 +755,10 @@ async function createSecurityDataViews(coreStart: CoreStart, logger: Logger): Pr
   // security app's init flow also uses this alias name. Both must agree so that
   // hasMatchedIndices() returns true (the alias is created in ensureAlertsIndex).
   const alertTitle = `security.alerts-${SPACE_ID}`;
-  const defaultTitle = [...Object.values(EVENT_INDICES), alertTitle].join(',');
+  // Use a wildcard to cover all three sample-data-* streams in one pattern.
+  // Must match what ensurePlaygroundUiSettings writes to securitySolution:defaultIndex
+  // so the Security app's init flow sees no diff and does not overwrite the title.
+  const defaultTitle = `sample-data-*,${alertTitle}`;
 
   const soRepo = coreStart.savedObjects.createInternalRepository();
   try {

@@ -12,12 +12,12 @@ export const SAMPLE_TAG = 'elastic-security-sample-data';
 
 export const PROVISION_ROUTE = '/internal/security_playground/provision' as const;
 
-// Space-scoped event data streams — follow the Fleet logs-{dataset}-{namespace} convention
-// but use SPACE_ID as the namespace so sample docs never land in the default endpoint streams.
+// Dedicated sample-data event data streams — fully parallel to logs-*, with their own
+// index templates and ECS mappings. Not visible to Fleet or prebuilt Endpoint rules.
 export const EVENT_INDICES = {
-  process: `logs-endpoint.events.process-${SPACE_ID}`,
-  network: `logs-endpoint.events.network-${SPACE_ID}`,
-  file: `logs-endpoint.events.file-${SPACE_ID}`,
+  process: 'sample-data-process',
+  network: 'sample-data-network',
+  file: 'sample-data-file',
 } as const;
 
 // Pinned rule UUIDs — deterministic so alert "kibana.alert.rule.uuid" links resolve on re-provision.
