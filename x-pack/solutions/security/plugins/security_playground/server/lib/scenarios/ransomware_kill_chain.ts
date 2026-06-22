@@ -12,7 +12,7 @@
 //   - kibana.space_ids now uses the namespace
 //   - transport abstraction replaced with IndexedDoc[] return value (caller bulk-indexes)
 
-import { SAMPLE_TAG, PINNED_RULE_IDS } from '../../../common/constants';
+import { SAMPLE_TAG, PINNED_RULE_IDS, EVENT_INDICES } from '../../../common/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,7 +202,7 @@ const emitProcessTree = (
   baseMinute: number
 ): IndexedDoc[] =>
   tree.map((node, i) => ({
-    _index: 'logs-endpoint.events.process-default',
+    _index: EVENT_INDICES.process,
     _source: endpointProcessEvent(
       minutesAgo(baseMinute - i),
       {
@@ -409,7 +409,7 @@ export function* generateRansomwareKillChainPhases(
   const c2Docs: IndexedDoc[] = [];
   for (let i = 0; i < beaconCount; i++) {
     c2Docs.push({
-      _index: 'logs-endpoint.events.network-default',
+      _index: EVENT_INDICES.network,
       _source: {
         ...baseEvent(minutesAgo(count - workstationTree.length - i)),
         agent: { type: 'endpoint', id: AGENT_ID },
@@ -536,7 +536,7 @@ export function* generateRansomwareKillChainPhases(
   for (let i = 0; i < encCount; i++) {
     const targetHost = hosts[i % 2 === 0 ? 1 : 3];
     impactDocs.push({
-      _index: 'logs-endpoint.events.file-default',
+      _index: EVENT_INDICES.file,
       _source: {
         ...baseEvent(minutesAgo(5 + encCount - i)),
         agent: { type: 'endpoint', id: AGENT_ID },

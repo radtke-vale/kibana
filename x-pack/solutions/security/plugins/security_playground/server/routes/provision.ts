@@ -22,6 +22,7 @@ import {
   SAMPLE_TAG,
   PINNED_RULE_IDS,
   KILL_CHAIN_PHASES,
+  EVENT_INDICES,
 } from '../../common/constants';
 import { generateRansomwareKillChainPhases } from '../lib/scenarios/ransomware_kill_chain';
 
@@ -36,7 +37,7 @@ const RANSOMWARE_RULES = [
     query: 'process.parent.name: "WINWORD.EXE" and process.name: "cmd.exe"',
     severity: 'medium',
     riskScore: 55,
-    index: ['logs-endpoint.events.process-*'],
+    index: [EVENT_INDICES.process],
     mitreTacticId: 'TA0001',
     mitreTacticName: 'Initial Access',
     mitreTechId: 'T1566.001',
@@ -48,7 +49,7 @@ const RANSOMWARE_RULES = [
     query: 'process.name: "rundll32.exe" and destination.port: (443 or 8443)',
     severity: 'high',
     riskScore: 82,
-    index: ['logs-endpoint.events.network-*'],
+    index: [EVENT_INDICES.network],
     mitreTacticId: 'TA0011',
     mitreTacticName: 'Command and Control',
     mitreTechId: 'T1071.001',
@@ -60,7 +61,7 @@ const RANSOMWARE_RULES = [
     query: 'process.name: "net.exe" and process.args: "Domain Admins"',
     severity: 'medium',
     riskScore: 47,
-    index: ['logs-endpoint.events.process-*'],
+    index: [EVENT_INDICES.process],
     mitreTacticId: 'TA0007',
     mitreTacticName: 'Discovery',
     mitreTechId: 'T1069.002',
@@ -72,7 +73,7 @@ const RANSOMWARE_RULES = [
     query: 'process.name: "mimikatz.exe" and host.name: "SRV-DC*"',
     severity: 'critical',
     riskScore: 95,
-    index: ['logs-endpoint.events.process-*'],
+    index: [EVENT_INDICES.process],
     mitreTacticId: 'TA0006',
     mitreTacticName: 'Credential Access',
     mitreTechId: 'T1003.001',
@@ -84,7 +85,7 @@ const RANSOMWARE_RULES = [
     query: 'file.extension: "locked" and event.action: "modification"',
     severity: 'critical',
     riskScore: 99,
-    index: ['logs-endpoint.events.file-*'],
+    index: [EVENT_INDICES.file],
     mitreTacticId: 'TA0040',
     mitreTacticName: 'Impact',
     mitreTechId: 'T1486',
@@ -96,7 +97,7 @@ const RANSOMWARE_RULES = [
     query: 'process.name: "vssadmin.exe" and process.args: "delete"',
     severity: 'critical',
     riskScore: 97,
-    index: ['logs-endpoint.events.process-*'],
+    index: [EVENT_INDICES.process],
     mitreTacticId: 'TA0040',
     mitreTacticName: 'Impact',
     mitreTechId: 'T1490',
@@ -108,7 +109,7 @@ const RANSOMWARE_RULES = [
     query: 'process.name: "PsExec.exe"',
     severity: 'high',
     riskScore: 85,
-    index: ['logs-endpoint.events.process-*'],
+    index: [EVENT_INDICES.process],
     mitreTacticId: 'TA0008',
     mitreTacticName: 'Lateral Movement',
     mitreTechId: 'T1570',
@@ -198,23 +199,14 @@ export const registerProvisionRoutes = (
           // Space already gone — continue to clean up raw events
         }
 
-        // 2. Delete raw events (cluster-wide data streams, tagged)
-        const eventIndices = [
-          'logs-endpoint.events.process-default',
-          'logs-endpoint.events.network-default',
-          'logs-endpoint.events.file-default',
-        ];
-        let totalDeleted = 0;
-        for (const idx of eventIndices) {
+        // 2. Delete the space-scoped raw event data streams entirely.
+        // They contain only sample data by construction, so dropping the stream
+        // is simpler and faster than deleteByQuery.
+        for (const stream of Object.values(EVENT_INDICES)) {
           try {
-            const result = await esClient.deleteByQuery({
-              index: idx,
-              query: { term: { tags: SAMPLE_TAG } },
-              conflicts: 'proceed',
-            });
-            totalDeleted += result.deleted ?? 0;
+            await esClient.indices.deleteDataStream({ name: stream });
           } catch {
-            // Index may not exist
+            // 404 = stream never created or already deleted — fine
           }
         }
 
@@ -230,8 +222,8 @@ export const registerProvisionRoutes = (
           // Index already gone
         }
 
-        logger.info(`Security playground cleanup complete. Raw events deleted: ${totalDeleted}`);
-        return response.ok({ body: { deleted: totalDeleted } });
+        logger.info('Security playground cleanup complete.');
+        return response.ok({ body: { deleted: true } });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`Playground cleanup failed: ${message}`);
@@ -374,15 +366,9 @@ async function provisionAsync(
 
   // -------------------------------------------------------------------------
   // Step 3: Generate + index scenario docs, emitting progress per kill-chain phase.
-  //
-  // NOTE: raw event indices (logs-endpoint.events.*-default) are cluster-wide —
-  // these docs appear in Discover for ALL spaces unless a space-scoped Data View
-  // filter is installed.
   // -------------------------------------------------------------------------
 
-  // Ensure the three raw-event data streams exist before bulk-indexing.
-  // In dev clusters without the Elastic Endpoint Fleet integration installed, these
-  // data streams don't exist and every bulk create silently returns index_not_found.
+  // Ensure the space-scoped raw-event data streams exist before bulk-indexing.
   await ensureEventDataStreams(esClient, logger);
 
   // Create the two data views the security app needs in the sample-playground space.
@@ -453,24 +439,17 @@ async function provisionAsync(
 }
 
 // ---------------------------------------------------------------------------
-// Ensure the raw-event data streams exist.
+// Ensure the space-scoped raw-event data streams exist.
 //
-// In a dev cluster without the Elastic Endpoint Fleet integration, the data
-// streams `logs-endpoint.events.{process,network,file}-default` don't exist.
-// We create a minimal index template + data stream so bulk-index can succeed.
-// Priority 1 means Fleet's real template (priority 100+) always wins when present.
+// In a dev cluster without the Elastic Endpoint Fleet integration the streams
+// won't exist yet. We install a minimal index template (priority 1 so Fleet's
+// real template at 100+ wins when present) then create the data stream.
 // ---------------------------------------------------------------------------
-const EVENT_DATA_STREAMS = [
-  'logs-endpoint.events.process-default',
-  'logs-endpoint.events.network-default',
-  'logs-endpoint.events.file-default',
-] as const;
-
 async function ensureEventDataStreams(
   esClient: ElasticsearchClient,
   logger: Logger
 ): Promise<void> {
-  for (const streamName of EVENT_DATA_STREAMS) {
+  for (const streamName of Object.values(EVENT_INDICES)) {
     // Check whether the data stream already exists.
     let exists = false;
     try {
@@ -662,12 +641,7 @@ async function createSecurityDataViews(coreStart: CoreStart, logger: Logger): Pr
   // security app's init flow also uses this alias name. Both must agree so that
   // hasMatchedIndices() returns true (the alias is created in ensureAlertsIndex).
   const alertTitle = `security.alerts-${SPACE_ID}`;
-  const defaultTitle = [
-    'logs-endpoint.events.process-default',
-    'logs-endpoint.events.network-default',
-    'logs-endpoint.events.file-default',
-    alertTitle,
-  ].join(',');
+  const defaultTitle = [...Object.values(EVENT_INDICES), alertTitle].join(',');
 
   const soRepo = coreStart.savedObjects.createInternalRepository();
   try {
