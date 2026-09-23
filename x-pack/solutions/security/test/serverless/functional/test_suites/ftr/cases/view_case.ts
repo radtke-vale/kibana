@@ -7,17 +7,12 @@
 
 import expect from '@kbn/expect';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  CaseSeverity,
-  CaseStatuses,
-  CustomFieldTypes,
-} from '@kbn/cases-plugin/common/types/domain';
+import { CaseSeverity, CaseStatuses } from '@kbn/cases-plugin/common/types/domain';
 
 import { SECURITY_SOLUTION_OWNER } from '@kbn/cases-plugin/common';
 import {
   createOneCaseBeforeDeleteAllAfter,
   createAndNavigateToCase,
-  navigateToCasesApp,
 } from '@kbn/test-suites-xpack-platform/serverless/shared/lib/cases/helpers';
 import type { FtrProviderContext } from '../../../ftr_provider_context';
 
@@ -30,7 +25,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
   const svlCases = getService('svlCases');
   const find = getService('find');
   const config = getService('config');
-  const retry = getService('retry');
   const comboBox = getService('comboBox');
   const svlCommonPage = getPageObject('svlCommonPage');
 
@@ -212,95 +206,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
     });
 
-    describe('filter activity', () => {
-      createOneCaseBeforeDeleteAllAfter(getPageObject, getService, owner);
-
-      beforeEach(async function () {
-        // The redesign consolidates the activity type filters into a single dropdown
-        // (`user-actions-filter-bar-type-button`) with popover options and plain count badges rather
-        // than the legacy inline toggle buttons with `euiNotificationBadge` "N active filters" labels
-        // these assertions read; the redesign filter bar has its own unit coverage.
-        if (await cases.common.isRedesignEnabled()) {
-          this.skip();
-        }
-      });
-
-      it('filters by all by default', async () => {
-        const allBadge = await find.byCssSelector(
-          '[data-test-subj="user-actions-filter-activity-button-all"] span.euiNotificationBadge'
-        );
-
-        expect(await allBadge.getAttribute('aria-label')).equal('1 active filters');
-      });
-
-      it('filters by comment successfully', async () => {
-        const commentBadge = await find.byCssSelector(
-          '[data-test-subj="user-actions-filter-activity-button-comments"] span.euiNotificationBadge'
-        );
-
-        expect(await commentBadge.getAttribute('aria-label')).equal('0 available filters');
-
-        const commentArea = await find.byCssSelector(
-          '[data-test-subj="add-comment"] textarea.euiMarkdownEditorTextArea'
-        );
-        await commentArea.focus();
-        await commentArea.type('Test comment from automation');
-        await testSubjects.click('submit-comment');
-
-        await header.waitUntilLoadingHasFinished();
-
-        await testSubjects.click('user-actions-filter-activity-button-comments');
-
-        expect(await commentBadge.getAttribute('aria-label')).equal('1 active filters');
-      });
-
-      it('filters by history successfully', async () => {
-        const historyBadge = await find.byCssSelector(
-          '[data-test-subj="user-actions-filter-activity-button-history"] span.euiNotificationBadge'
-        );
-
-        expect(await historyBadge.getAttribute('aria-label')).equal('1 available filters');
-
-        await cases.common.selectSeverity(CaseSeverity.MEDIUM);
-
-        await header.waitUntilLoadingHasFinished();
-
-        await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
-
-        await header.waitUntilLoadingHasFinished();
-
-        await testSubjects.click('user-actions-filter-activity-button-history');
-
-        expect(await historyBadge.getAttribute('aria-label')).equal('3 active filters');
-      });
-
-      it('sorts by newest first successfully', async () => {
-        await testSubjects.click('user-actions-filter-activity-button-all');
-
-        const AllBadge = await find.byCssSelector(
-          '[data-test-subj="user-actions-filter-activity-button-all"] span.euiNotificationBadge'
-        );
-
-        expect(await AllBadge.getVisibleText()).equal('4');
-
-        const sortDesc = await find.byCssSelector(
-          '[data-test-subj="user-actions-sort-select"] [value="desc"]'
-        );
-
-        await sortDesc.click();
-
-        await header.waitUntilLoadingHasFinished();
-
-        const userActionsLists = await find.allByCssSelector(
-          '[data-test-subj="user-actions-list"]'
-        );
-
-        const actionList = await userActionsLists[0].findAllByClassName('euiComment');
-
-        expect(await actionList[0].getAttribute('data-test-subj')).contain('status-update-action');
-      });
-    });
-
     // FLAKY: https://github.com/elastic/kibana/issues/288565
     describe.skip('Lens visualization', () => {
       before(async () => {
@@ -344,71 +249,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         const description = await find.byCssSelector('[data-test-subj="description"]');
 
         await description.findByCssSelector('[data-test-subj="xyVisChart"]');
-      });
-    });
-
-    describe('pagination', () => {
-      let createdCase: any;
-
-      before(async () => {
-        createdCase = await createAndNavigateToCase(getPageObject, getService, owner);
-      });
-
-      after(async () => {
-        await svlCases.api.deleteAllCaseItems();
-      });
-
-      beforeEach(async function () {
-        // The redesign renders all activity (paged actions, the show-more row, and the latest actions)
-        // in a single `user-actions-list`, whereas these assertions expect the legacy two-list DOM with
-        // fixed per-list counts; the redesign pagination has its own unit coverage.
-        if (await cases.common.isRedesignEnabled()) {
-          this.skip();
-        }
-      });
-
-      it('initially renders user actions list correctly', async () => {
-        await testSubjects.missingOrFail('cases-show-more-user-actions');
-
-        const userActionsLists = await find.allByCssSelector(
-          '[data-test-subj="user-actions-list"]'
-        );
-
-        expect(userActionsLists).length(1);
-      });
-
-      it('shows more actions on button click', async () => {
-        await cases.api.generateUserActions({
-          caseId: createdCase.id,
-          caseVersion: createdCase.version,
-          totalUpdates: 4,
-        });
-
-        await testSubjects.missingOrFail('user-actions-loading');
-
-        await header.waitUntilLoadingHasFinished();
-
-        await testSubjects.click('case-refresh');
-
-        await header.waitUntilLoadingHasFinished();
-
-        await testSubjects.existOrFail('cases-show-more-user-actions');
-
-        const userActionsLists = await find.allByCssSelector(
-          '[data-test-subj="user-actions-list"]'
-        );
-
-        expect(userActionsLists).length(2);
-
-        expect(await userActionsLists[0].findAllByCssSelector('li')).length(10);
-
-        expect(await userActionsLists[1].findAllByCssSelector('li')).length(4);
-
-        await testSubjects.click('cases-show-more-user-actions');
-
-        await header.waitUntilLoadingHasFinished();
-
-        expect(await userActionsLists[0].findAllByCssSelector('li')).length(20);
       });
     });
 
@@ -494,102 +334,5 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
     });
 
-    describe('customFields', () => {
-      const customFields = [
-        {
-          key: 'valid_key_1',
-          label: 'Summary',
-          type: CustomFieldTypes.TEXT as const,
-          defaultValue: 'foobar',
-          required: true,
-        },
-        {
-          key: 'valid_key_2',
-          label: 'Sync',
-          type: CustomFieldTypes.TOGGLE as const,
-          defaultValue: false,
-          required: true,
-        },
-      ];
-
-      before(async function () {
-        // The redesign only renders case-view custom fields when templates v2 (`templates.enabled`) is
-        // on, which defaults off; these assertions target the legacy sidebar custom-field editors.
-        if (await cases.common.isRedesignEnabled()) {
-          return this.skip();
-        }
-
-        await navigateToCasesApp(getPageObject, getService, owner);
-        await cases.api.createConfigWithCustomFields({ customFields, owner });
-        await cases.api.createCase({
-          customFields: [
-            {
-              key: 'valid_key_1',
-              type: CustomFieldTypes.TEXT,
-              value: 'this is a text field value',
-            },
-            {
-              key: 'valid_key_2',
-              type: CustomFieldTypes.TOGGLE,
-              value: true,
-            },
-          ],
-          owner,
-        });
-
-        await cases.casesTable.waitForCasesToBeListed();
-        await cases.casesTable.goToFirstListedCase();
-        await header.waitUntilLoadingHasFinished();
-      });
-
-      afterEach(async () => {
-        await svlCases.api.deleteAllCaseItems();
-      });
-
-      it('updates a custom field correctly', async () => {
-        const textField = await testSubjects.find(`case-text-custom-field-${customFields[0].key}`);
-        expect(await textField.getVisibleText()).equal('this is a text field value');
-
-        const toggle = await testSubjects.find(
-          `case-toggle-custom-field-form-field-${customFields[1].key}`
-        );
-        expect(await toggle.getAttribute('aria-checked')).equal('true');
-
-        await testSubjects.click(`case-text-custom-field-edit-button-${customFields[0].key}`);
-
-        await retry.waitFor('custom field edit form to exist', async () => {
-          return await testSubjects.exists(
-            `case-text-custom-field-form-field-${customFields[0].key}`
-          );
-        });
-
-        const inputField = await testSubjects.find(
-          `case-text-custom-field-form-field-${customFields[0].key}`
-        );
-
-        await inputField.type(' edited!!');
-
-        await testSubjects.click(`case-text-custom-field-submit-button-${customFields[0].key}`);
-
-        await header.waitUntilLoadingHasFinished();
-
-        await toggle.click({
-          bottomOffset: 100 /* account for fixed footer when deciding if toggle is visible */,
-        });
-
-        await header.waitUntilLoadingHasFinished();
-
-        expect(await textField.getVisibleText()).equal('this is a text field value edited!!');
-
-        expect(await toggle.getAttribute('aria-checked')).equal('false');
-
-        // validate user action
-        const userActions = await find.allByCssSelector(
-          '[data-test-subj*="customFields-update-action"]'
-        );
-
-        expect(userActions).length(2);
-      });
-    });
   });
 };
