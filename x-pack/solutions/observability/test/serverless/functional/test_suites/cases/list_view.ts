@@ -73,6 +73,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
           await cases.casesTable.selectAndChangeSeverityOfAllCases(CaseSeverity.MEDIUM);
           await cases.casesTable.waitForTableToFinishLoading();
           await testSubjects.missingOrFail('case-severity-badge-low');
+          await testSubjects.existOrFail('case-severity-badge-medium');
         });
       });
 
