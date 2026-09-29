@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isEmpty } from 'lodash';
 import useDebounce from 'react-use/lib/useDebounce';
 import type { FieldHook } from '@kbn/es-ui-shared-plugin/static/forms/hook_form_lib';
@@ -45,12 +45,14 @@ export const useMarkdownSessionStorage = ({
   const saveDraft = useCallback(
     (value = fieldValueRef.current) => {
       cancelDebouncedSave();
-      if (!isEmpty(sessionKey)) {
+      if (!isEmpty(sessionKey) && window.sessionStorage.getItem(sessionKey) !== null) {
         window.sessionStorage.setItem(sessionKey, value);
       }
     },
     [cancelDebouncedSave, sessionKey]
   );
+
+  useEffect(() => () => saveDraft(), [saveDraft]);
 
   if (!isEmpty(sessionValue) && !isEmpty(sessionKey) && isFirstRender.current) {
     field.setValue(sessionValue);
