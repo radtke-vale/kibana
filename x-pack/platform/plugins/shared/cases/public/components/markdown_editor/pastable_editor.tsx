@@ -18,6 +18,7 @@ interface PastableMarkdownEditorProps extends EditorBaseProps {
   field: FieldHook<string>;
   caseId: string;
   owner: Owner;
+  onChange: (value: string) => void;
 }
 
 const PastableMarkdownEditorComponent = forwardRef<MarkdownEditorRef, PastableMarkdownEditorProps>(
@@ -30,6 +31,7 @@ const PastableMarkdownEditorComponent = forwardRef<MarkdownEditorRef, PastableMa
       disabledUiPlugins,
       'data-test-subj': dataTestSubj,
       owner,
+      onChange,
     } = props;
 
     const fileKindId = constructFileKindIdByOwner(owner);
@@ -54,7 +56,7 @@ const PastableMarkdownEditorComponent = forwardRef<MarkdownEditorRef, PastableMa
           ref={ref}
           ariaLabel={ariaLabel}
           editorId={editorId}
-          onChange={field.setValue}
+          onChange={onChange}
           value={field.value}
           disabledUiPlugins={disabledUiPlugins}
           data-test-subj={`${dataTestSubj}-markdown-editor`}

@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { forwardRef, useMemo } from 'react';
+import React, { forwardRef, useCallback, useMemo } from 'react';
 import { css } from '@emotion/react';
 import type { EuiMarkdownEditorProps } from '@elastic/eui';
 import {
@@ -58,12 +58,19 @@ export const MarkdownEditorForm = React.memo(
       ref
     ) => {
       const { isInvalid, errorMessage } = getFieldValidityAndErrorMessage(field);
-      const { hasConflicts } = useMarkdownSessionStorage({
+      const { hasConflicts, saveDraft } = useMarkdownSessionStorage({
         field,
         sessionKey: draftStorageKey ?? '',
         initialValue,
       });
       const { euiTheme } = useEuiTheme();
+      const handleChange = useCallback(
+        (value: string) => {
+          field.setValue(value);
+          saveDraft(value);
+        },
+        [field, saveDraft]
+      );
 
       const conflictWarningText = i18n.VERSION_CONFLICT_WARNING(
         id === 'description' ? id : 'comment'
@@ -99,7 +106,7 @@ export const MarkdownEditorForm = React.memo(
               field={field}
               caseId={caseId}
               ref={ref}
-              onChange={field.setValue}
+              onChange={handleChange}
               value={field.value}
             />
           </EuiFormRow>

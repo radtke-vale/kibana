@@ -13,7 +13,6 @@ import {
   CaseStatuses,
   CustomFieldTypes,
 } from '@kbn/cases-plugin/common/types/domain';
-import { setTimeout as setTimeoutAsync } from 'timers/promises';
 
 import {
   createUsersAndRoles,
@@ -30,6 +29,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
   const retry = getService('retry');
   const comboBox = getService('comboBox');
   const browser = getService('browser');
+  const supertest = getService('supertest');
 
   const hasFocus = async (testSubject: string) => {
     const targetElement = await testSubjects.find(testSubject);
@@ -93,14 +93,22 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await find.byCssSelector('[data-test-subj*="title-update-action"]');
       });
 
-      it('shows error message when title is more than 160 characters', async function () {
-        // The redesign validates the title length server-side (surfaced as a toast) rather than with
-        // an inline form error, so this legacy client-side validation flow does not apply.
-        if (await cases.common.isRedesignEnabled()) {
-          return this.skip();
-        }
+      it('shows error message when title is more than 160 characters', async () => {
+        const longTitle = 'x'.repeat(161);
 
-        const longTitle = Array(161).fill('x').toString();
+        if (await cases.common.isRedesignEnabled()) {
+          const originalTitle = await testSubjects.getVisibleText('appHeaderTitle');
+
+          await testSubjects.click('appHeaderTitleButton');
+          await testSubjects.setValue('appHeaderTitleInput', longTitle);
+          await browser.pressKeys(browser.keys.ENTER);
+
+          await cases.common.expectToasterToContain(
+            'The length of the title is too long. The maximum length is 160.'
+          );
+          await cases.common.assertCaseTitle(originalTitle);
+          return;
+        }
 
         await testSubjects.click('editable-title-header-value');
         await testSubjects.setValue('editable-title-input-field', longTitle);
@@ -206,14 +214,21 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await find.byCssSelector('[data-test-subj*="category-delete-action"]');
       });
 
-      it('shows error when category is more than 50 characters', async function () {
-        // The redesign surfaces category length validation inline on the always-visible combo box
-        // rather than through the legacy edit form, so this flow does not apply.
+      it('shows error when category is more than 50 characters', async () => {
+        const longCategory = 'x'.repeat(51);
+
         if (await cases.common.isRedesignEnabled()) {
-          return this.skip();
+          await comboBox.setCustom('categories-list', longCategory);
+
+          const error = await find.byCssSelector('.euiFormErrorText');
+          expect(await error.getVisibleText()).equal(
+            'The length of the category is too long. The maximum length is 50 characters.'
+          );
+
+          await comboBox.clear('categories-list');
+          return;
         }
 
-        const longCategory = Array(51).fill('x').toString();
         await testSubjects.click('category-edit-button');
         await comboBox.setCustom('comboBoxInput', longCategory);
         await testSubjects.click('edit-category-submit');
@@ -240,14 +255,18 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await find.byCssSelector('[data-test-subj*="tags-add-action"]');
       });
 
-      it('shows error when tag is more than 256 characters', async function () {
-        // The redesign surfaces tag length validation inline on the always-visible combo box rather
-        // than through the legacy edit form, so this flow does not apply.
-        if (await cases.common.isRedesignEnabled()) {
-          return this.skip();
-        }
+      it('shows error when tag is more than 256 characters', async () => {
+        const longTag = 'a'.repeat(257);
 
-        const longTag = Array(257).fill('a').toString();
+        if (await cases.common.isRedesignEnabled()) {
+          await comboBox.setCustom('case-tags', longTag);
+
+          const error = await find.byCssSelector('.euiFormErrorText');
+          expect(await error.getVisibleText()).equal(
+            'The length of the tag is too long. The maximum length is 256 characters.'
+          );
+          return;
+        }
 
         await testSubjects.click('tag-list-edit-button');
         await comboBox.clearInputField('comboBoxInput');
@@ -312,97 +331,104 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
           }
         });
 
-        it("reopens a case from the 'reopen case' button", async function () {
-          // The redesign has no action-bar quick-action button (`case-view-status-action-button`);
-          // status is changed only from the header badge, covered by the dropdown-menu tests above.
+        it("reopens a case from the 'reopen case' button", async () => {
           if (await cases.common.isRedesignEnabled()) {
-            return this.skip();
+            await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses.open);
+          } else {
+            await testSubjects.click('case-view-status-action-button');
           }
-
-          await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses.closed);
-          await header.waitUntilLoadingHasFinished();
-          await testSubjects.click('case-view-status-action-button');
           await header.waitUntilLoadingHasFinished();
 
-          await testSubjects.existOrFail(
-            'header-page-supplements > case-status-badge-popover-button-open',
-            {
-              timeout: 5000,
-            }
-          );
+          if (await cases.common.isRedesignEnabled()) {
+            expect(await testSubjects.getVisibleText('case-view-status-badge')).equal('Open');
+          } else {
+            await testSubjects.existOrFail(
+              'header-page-supplements > case-status-badge-popover-button-open',
+              {
+                timeout: 5000,
+              }
+            );
+          }
 
           // validate user action
           await find.byCssSelector(
             '[data-test-subj*="status-update-action"] [data-test-subj="case-status-badge-open"]'
           );
           // validates dropdown tag
-          await testSubjects.existOrFail(
-            'case-view-status-dropdown > case-status-badge-popover-button-open'
-          );
+          if (!(await cases.common.isRedesignEnabled())) {
+            await testSubjects.existOrFail(
+              'case-view-status-dropdown > case-status-badge-popover-button-open'
+            );
+          }
         });
 
-        it("marks in progress a case from the 'mark in progress' button", async function () {
-          // The redesign has no action-bar quick-action button (`case-view-status-action-button`);
-          // status is changed only from the header badge, covered by the dropdown-menu tests above.
+        it("marks in progress a case from the 'mark in progress' button", async () => {
           if (await cases.common.isRedesignEnabled()) {
-            return this.skip();
+            await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
+          } else {
+            await testSubjects.click('case-view-status-action-button');
           }
-
-          await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses.open);
-          await header.waitUntilLoadingHasFinished();
-          await testSubjects.click('case-view-status-action-button');
           await header.waitUntilLoadingHasFinished();
 
-          await testSubjects.existOrFail(
-            'header-page-supplements > case-status-badge-popover-button-in-progress',
-            {
-              timeout: 5000,
-            }
-          );
+          if (await cases.common.isRedesignEnabled()) {
+            expect(await testSubjects.getVisibleText('case-view-status-badge')).equal(
+              'In progress'
+            );
+          } else {
+            await testSubjects.existOrFail(
+              'header-page-supplements > case-status-badge-popover-button-in-progress',
+              {
+                timeout: 5000,
+              }
+            );
+          }
 
           // validate user action
           await find.byCssSelector(
             '[data-test-subj*="status-update-action"] [data-test-subj="case-status-badge-in-progress"]'
           );
           // validates dropdown tag
-          await testSubjects.existOrFail(
-            'case-view-status-dropdown > case-status-badge-popover-button-in-progress'
-          );
+          if (!(await cases.common.isRedesignEnabled())) {
+            await testSubjects.existOrFail(
+              'case-view-status-dropdown > case-status-badge-popover-button-in-progress'
+            );
+          }
         });
 
-        it("closes a case from the 'close case' button", async function () {
-          // The redesign has no action-bar quick-action button (`case-view-status-action-button`);
-          // status is changed only from the header badge, covered by the dropdown-menu tests above.
+        it("closes a case from the 'close case' button", async () => {
           if (await cases.common.isRedesignEnabled()) {
-            return this.skip();
+            await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses.closed);
+          } else {
+            await testSubjects.click('case-view-status-action-button');
           }
-
-          await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
-          await header.waitUntilLoadingHasFinished();
-          await testSubjects.click('case-view-status-action-button');
           await header.waitUntilLoadingHasFinished();
 
-          await testSubjects.existOrFail(
-            'header-page-supplements > case-status-badge-popover-button-closed',
-            {
-              timeout: 5000,
-            }
-          );
+          if (await cases.common.isRedesignEnabled()) {
+            expect(await testSubjects.getVisibleText('case-view-status-badge')).equal('Closed');
+          } else {
+            await testSubjects.existOrFail(
+              'header-page-supplements > case-status-badge-popover-button-closed',
+              {
+                timeout: 5000,
+              }
+            );
+          }
 
           // validate user action
           await find.byCssSelector(
             '[data-test-subj*="status-update-action"] [data-test-subj="case-status-badge-closed"]'
           );
           // validates dropdown tag
-          await testSubjects.existOrFail(
-            'case-view-status-dropdown >case-status-badge-popover-button-closed'
-          );
+          if (!(await cases.common.isRedesignEnabled())) {
+            await testSubjects.existOrFail(
+              'case-view-status-dropdown >case-status-badge-popover-button-closed'
+            );
+          }
         });
       });
     });
 
-    // FLAKY: https://github.com/elastic/kibana/issues/207704
-    describe.skip('draft comments', () => {
+    describe('draft comments', () => {
       createOneCaseBeforeEachDeleteAllAfterEach(getPageObject, getService);
 
       it('persists new comment when status is updated in dropdown', async () => {
@@ -418,11 +444,13 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
           '[data-test-subj*="status-update-action"] [data-test-subj="case-status-badge-in-progress"]'
         );
         // validates dropdown tag
-        await testSubjects.existOrFail(
-          'case-view-status-dropdown > case-status-badge-popover-button-in-progress'
-        );
+        if (!(await cases.common.isRedesignEnabled())) {
+          await testSubjects.existOrFail(
+            'case-view-status-dropdown > case-status-badge-popover-button-in-progress'
+          );
+        }
 
-        await testSubjects.click('submit-comment');
+        await cases.singleCase.submitComment();
 
         // validate user action
         const newComment = await find.byCssSelector(
@@ -440,26 +468,36 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
 
         await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
         await header.waitUntilLoadingHasFinished();
-        await testSubjects.click('case-view-status-action-button');
+        if (await cases.common.isRedesignEnabled()) {
+          await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses.closed);
+        } else {
+          await testSubjects.click('case-view-status-action-button');
+        }
         await header.waitUntilLoadingHasFinished();
 
-        await testSubjects.existOrFail(
-          'header-page-supplements > case-status-badge-popover-button-closed',
-          {
-            timeout: 5000,
-          }
-        );
+        if (await cases.common.isRedesignEnabled()) {
+          expect(await testSubjects.getVisibleText('case-view-status-badge')).equal('Closed');
+        } else {
+          await testSubjects.existOrFail(
+            'header-page-supplements > case-status-badge-popover-button-closed',
+            {
+              timeout: 5000,
+            }
+          );
+        }
 
         // validate user action
         await find.byCssSelector(
           '[data-test-subj*="status-update-action"] [data-test-subj="case-status-badge-closed"]'
         );
         // validates dropdown tag
-        await testSubjects.existOrFail(
-          'case-view-status-dropdown >case-status-badge-popover-button-closed'
-        );
+        if (!(await cases.common.isRedesignEnabled())) {
+          await testSubjects.existOrFail(
+            'case-view-status-dropdown >case-status-badge-popover-button-closed'
+          );
+        }
 
-        await testSubjects.click('submit-comment');
+        await cases.singleCase.submitComment();
 
         // validate user action
         const newComment = await find.byCssSelector(
@@ -477,14 +515,8 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await commentArea.focus();
         await commentArea.type(comment);
 
-        /**
-         * We need to wait for some time to
-         * give the localStorage a change to persist
-         * the comment. Otherwise, the test navigates to
-         * fast to the cases table and the comment is not
-         * persisted
-         */
-        await setTimeoutAsync(2000);
+        await cases.common.selectSeverity(CaseSeverity.MEDIUM);
+        await header.waitUntilLoadingHasFinished();
 
         await testSubjects.click('breadcrumb');
 
@@ -496,9 +528,9 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
           '[data-test-subj="add-comment"] textarea.euiMarkdownEditorTextArea'
         );
 
-        expect(await commentArea.getVisibleText()).equal(comment);
+        expect(await commentArea.getAttribute('value')).equal(comment);
 
-        await testSubjects.click('submit-comment');
+        await cases.singleCase.submitComment();
 
         // validate user action
         const newComment = await find.byCssSelector(
@@ -526,14 +558,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await editCommentTextArea.focus();
         await editCommentTextArea.type('Edited comment');
 
-        /**
-         * We need to wait for some time to
-         * give the localStorage a change to persist
-         * the comment. Otherwise, the test navigates to
-         * fast to the cases table and the comment is not
-         * persisted
-         */
-        await setTimeoutAsync(2000);
+        await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
 
         await header.waitUntilLoadingHasFinished();
         await browser.refresh();
@@ -557,14 +582,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await editCommentTextArea.focus();
         await editCommentTextArea.type('Edited description');
 
-        /**
-         * We need to wait for some time to
-         * give the localStorage a change to persist
-         * the comment. Otherwise, the test navigates to
-         * fast to the cases table and the comment is not
-         * persisted
-         */
-        await setTimeoutAsync(2000);
+        await cases.common.selectSeverity(CaseSeverity.MEDIUM);
 
         await header.waitUntilLoadingHasFinished();
 
@@ -601,17 +619,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await editCommentTextArea.type('Edited comment');
 
         await testSubjects.click('editable-save-markdown');
-        await header.waitUntilLoadingHasFinished();
-
-        /**
-         * We need to wait for some time to
-         * give the localStorage a change to persist
-         * the comment. Otherwise, the test navigates to
-         * fast to the cases table and the comment is not
-         * persisted
-         */
-        await setTimeoutAsync(2000);
-
         await header.waitUntilLoadingHasFinished();
 
         await browser.refresh();
@@ -670,13 +677,43 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
     });
 
-    // FLAKY: https://github.com/elastic/kibana/issues/288565
-    describe.skip('Lens visualization', () => {
+    describe('Lens visualization', () => {
+      const lensVisualizationTitle = 'Cases test log entries over time';
+      let lensVisualizationId: string;
+
       before(async () => {
         await cases.testResources.installKibanaSampleData('logs');
+        const { body } = await supertest
+          .post('/api/visualizations')
+          .set('kbn-xsrf', 'true')
+          .send({
+            type: 'xy',
+            title: lensVisualizationTitle,
+            layers: [
+              {
+                type: 'line',
+                data_source: {
+                  type: 'data_view_spec',
+                  index_pattern: 'kibana_sample_data_logs',
+                  time_field: 'timestamp',
+                },
+                x: {
+                  operation: 'date_histogram',
+                  field: 'timestamp',
+                },
+                y: [{ operation: 'count' }],
+              },
+            ],
+          })
+          .expect(201);
+        lensVisualizationId = body.id;
       });
 
       after(async () => {
+        await supertest
+          .delete(`/api/visualizations/${lensVisualizationId}`)
+          .set('kbn-xsrf', 'true')
+          .expect(204);
         await cases.testResources.removeKibanaSampleData('logs');
       });
 
@@ -702,7 +739,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         );
         await addVisualizationButton.click();
 
-        await cases.singleCase.findAndSaveVisualization('[Logs] Bytes distribution');
+        await cases.singleCase.findAndSaveVisualization(lensVisualizationTitle);
 
         await header.waitUntilLoadingHasFinished();
 
@@ -711,8 +748,12 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await header.waitUntilLoadingHasFinished();
 
         const description = await find.byCssSelector('[data-test-subj="description"]');
-
-        await description.findByCssSelector('[data-test-subj="xyVisChart"]');
+        const visualization = await description.findByCssSelector(
+          (await cases.common.isRedesignEnabled())
+            ? '[data-test-subj="lens-embeddable"]'
+            : '[data-test-subj="embeddablePanel"]'
+        );
+        await visualization.findByCssSelector('[data-test-subj="xyVisChart"]');
       });
 
       it('adds lens visualization in existing comment', async () => {
@@ -743,7 +784,7 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         );
         await addVisualizationButton.click();
 
-        await cases.singleCase.findAndSaveVisualization('[Logs] Bytes distribution');
+        await cases.singleCase.findAndSaveVisualization(lensVisualizationTitle);
 
         await header.waitUntilLoadingHasFinished();
 
@@ -754,18 +795,30 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         const createdComment = await find.byCssSelector(
           '[data-test-subj="comment-comment-comment"] [data-test-subj="scrollable-markdown"]'
         );
-
-        await createdComment.findByCssSelector('[data-test-subj="xyVisChart"]');
+        const visualization = await createdComment.findByCssSelector(
+          (await cases.common.isRedesignEnabled())
+            ? '[data-test-subj="lens-embeddable"]'
+            : '[data-test-subj="embeddablePanel"]'
+        );
+        await visualization.findByCssSelector('[data-test-subj="xyVisChart"]');
       });
 
       it('adds lens visualization in new comment', async () => {
-        await cases.singleCase.addVisualizationToNewComment('[Logs] Bytes distribution');
+        await cases.singleCase.addVisualizationToNewComment(lensVisualizationTitle);
 
         await header.waitUntilLoadingHasFinished();
 
-        const newComment = await find.byCssSelector('[data-test-subj*="comment-create-action"]');
-
-        await newComment.findByCssSelector('[data-test-subj="xyVisChart"]');
+        const newComment = await find.byCssSelector(
+          (await cases.common.isRedesignEnabled())
+            ? '[data-test-subj="comment-comment-comment"]'
+            : '[data-test-subj*="comment-create-action"]'
+        );
+        const visualization = await newComment.findByCssSelector(
+          (await cases.common.isRedesignEnabled())
+            ? '[data-test-subj="lens-embeddable"]'
+            : '[data-test-subj="embeddablePanel"]'
+        );
+        await visualization.findByCssSelector('[data-test-subj="xyVisChart"]');
       });
     });
 
@@ -789,17 +842,20 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
     describe('filter activity', () => {
       createOneCaseBeforeDeleteAllAfter(getPageObject, getService);
 
-      beforeEach(async function () {
-        // The redesign consolidates the activity type filters into a single dropdown
-        // (`user-actions-filter-bar-type-button`) with popover options and plain count badges rather
-        // than the legacy inline toggle buttons with `euiNotificationBadge` "N active filters" labels
-        // these assertions read; the redesign filter bar has its own unit coverage.
-        if (await cases.common.isRedesignEnabled()) {
-          this.skip();
-        }
-      });
-
       it('filters by all by default', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          expect(await testSubjects.getVisibleText('user-actions-filter-bar-type-button')).equal(
+            'Type: All'
+          );
+
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          const allOption = await testSubjects.find('user-actions-filter-bar-type-option-all');
+          expect(await allOption.getAttribute('aria-selected')).equal('true');
+          expect(await allOption.getVisibleText()).contain('1');
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          return;
+        }
+
         const allBadge = await find.byCssSelector(
           '[data-test-subj="user-actions-filter-activity-button-all"] span.euiNotificationBadge'
         );
@@ -808,6 +864,35 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
 
       it('filters by comment successfully', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          const commentOption = await testSubjects.find(
+            'user-actions-filter-bar-type-option-comments'
+          );
+          expect(await commentOption.getVisibleText()).contain('0');
+          await testSubjects.click('user-actions-filter-bar-type-button');
+
+          await cases.singleCase.addComment('Test comment from automation');
+          await header.waitUntilLoadingHasFinished();
+
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          const updatedCommentOption = await testSubjects.find(
+            'user-actions-filter-bar-type-option-comments'
+          );
+          expect(await updatedCommentOption.getVisibleText()).contain('1');
+          await updatedCommentOption.click();
+
+          expect(await testSubjects.getVisibleText('user-actions-filter-bar-type-button')).equal(
+            'Type: Comments'
+          );
+          const actionList = await testSubjects.find('user-actions-list');
+          const commentActions = await actionList.findAllByCssSelector(
+            'li[data-test-subj="comment-comment-comment"]'
+          );
+          expect(commentActions).length(1);
+          return;
+        }
+
         const commentBadge = await find.byCssSelector(
           '[data-test-subj="user-actions-filter-activity-button-comments"] span.euiNotificationBadge'
         );
@@ -829,6 +914,36 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
 
       it('filters by history successfully', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          await cases.common.selectSeverity(CaseSeverity.MEDIUM);
+          await header.waitUntilLoadingHasFinished();
+          await cases.common.changeCaseStatusViaDropdownAndVerify(CaseStatuses['in-progress']);
+          await header.waitUntilLoadingHasFinished();
+
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          const historyOption = await testSubjects.find(
+            'user-actions-filter-bar-type-option-history'
+          );
+          expect(await historyOption.getVisibleText()).contain('3');
+          await historyOption.click();
+
+          expect(await testSubjects.getVisibleText('user-actions-filter-bar-type-button')).equal(
+            'Type: History'
+          );
+          const actionList = await testSubjects.find('user-actions-list');
+          const historyActions = await actionList.findAllByCssSelector(
+            'li[data-test-subj*="-action-"]'
+          );
+          expect(historyActions).length(3);
+          const historyActionSubjects = await Promise.all(
+            historyActions.map((action) => action.getAttribute('data-test-subj'))
+          );
+          expect(
+            historyActionSubjects.some((subject) => subject?.includes('comment-create-action'))
+          ).to.be(false);
+          return;
+        }
+
         const historyBadge = await find.byCssSelector(
           '[data-test-subj="user-actions-filter-activity-button-history"] span.euiNotificationBadge'
         );
@@ -849,6 +964,23 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
 
       it('sorts by newest first successfully', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          await testSubjects.click('user-actions-filter-bar-type-button');
+          await testSubjects.click('user-actions-filter-bar-type-option-all');
+          await testSubjects.click('user-actions-filter-bar-sort-button');
+          await testSubjects.click('user-actions-filter-bar-sort-option-desc');
+          await header.waitUntilLoadingHasFinished();
+
+          expect(await testSubjects.getVisibleText('user-actions-filter-bar-sort-button')).equal(
+            'Sort by: Newest first'
+          );
+
+          const actionList = await testSubjects.find('user-actions-list');
+          const actions = await actionList.findAllByCssSelector('li[data-test-subj*="-action-"]');
+          expect(await actions[0].getAttribute('data-test-subj')).contain('status-update-action');
+          return;
+        }
+
         await testSubjects.click('user-actions-filter-activity-button-all');
 
         const AllBadge = await find.byCssSelector(
@@ -886,15 +1018,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await header.waitUntilLoadingHasFinished();
       });
 
-      beforeEach(async function () {
-        // The redesign renders all activity (paged actions, the show-more row, and the latest actions)
-        // in a single `user-actions-list`, whereas these assertions expect the legacy two-list DOM with
-        // fixed per-list counts; the redesign pagination has its own unit coverage.
-        if (await cases.common.isRedesignEnabled()) {
-          this.skip();
-        }
-      });
-
       after(async () => {
         await cases.api.deleteAllCases();
       });
@@ -929,6 +1052,23 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         const userActionsLists = await find.allByCssSelector(
           '[data-test-subj="user-actions-list"]'
         );
+
+        if (await cases.common.isRedesignEnabled()) {
+          expect(userActionsLists).length(1);
+
+          const actionList = userActionsLists[0];
+          expect(await actionList.findAllByCssSelector('li[data-test-subj*="-action-"]')).length(
+            13
+          );
+
+          await testSubjects.click('cases-show-more-user-actions');
+          await header.waitUntilLoadingHasFinished();
+
+          expect(await actionList.findAllByCssSelector('li[data-test-subj*="-action-"]')).length(
+            23
+          );
+          return;
+        }
 
         expect(userActionsLists).length(2);
 
@@ -1079,14 +1219,6 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await cases.api.activateUserProfiles([casesAllUser, casesAllUser2]);
       });
 
-      beforeEach(async function () {
-        // The redesign renders reporter/participants as app-header metadata and sidebar avatars rather
-        // than the legacy username lists these assertions read, so this suite targets the legacy UI.
-        if (await cases.common.isRedesignEnabled()) {
-          this.skip();
-        }
-      });
-
       afterEach(async () => {
         await cases.api.deleteAllCases();
       });
@@ -1110,6 +1242,17 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await cases.singleCase.refresh();
         await header.waitUntilLoadingHasFinished();
 
+        if (await cases.common.isRedesignEnabled()) {
+          const participantsPanel = await testSubjects.find('case-view-participants-field-panel');
+          await participantsPanel.findByCssSelector(
+            '[data-test-subj="case-user-profile-avatar-cases_all_user"]'
+          );
+          await participantsPanel.findByCssSelector(
+            '[data-test-subj="case-user-profile-avatar-elastic"]'
+          );
+          return;
+        }
+
         const participants = await cases.singleCase.getParticipants();
 
         const casesAllUserText = await participants[0].getVisibleText();
@@ -1127,6 +1270,23 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await cases.common.selectFirstRowInAssigneesPopover();
         await cases.singleCase.closeAssigneesPopover();
         await header.waitUntilLoadingHasFinished();
+
+        if (await cases.common.isRedesignEnabled()) {
+          const assigneesPanel = await testSubjects.find('case-view-assignees-field-panel');
+          await assigneesPanel.findByCssSelector(
+            '[data-test-subj="case-user-profile-avatar-cases_all_user"]'
+          );
+
+          const participantsPanel = await testSubjects.find('case-view-participants-field-panel');
+          await participantsPanel.findByCssSelector(
+            '[data-test-subj="case-user-profile-avatar-elastic"]'
+          );
+          await participantsPanel.findByCssSelector(
+            '[data-test-subj="case-user-profile-avatar-test_user"]'
+          );
+          return;
+        }
+
         await testSubjects.existOrFail('user-profile-assigned-user-cases_all_user-remove-group');
 
         const participants = await cases.singleCase.getParticipants();
@@ -1169,14 +1329,9 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         },
       ];
 
-      before(async function () {
-        // The redesign only renders case-view custom fields when templates v2 (`templates.enabled`) is
-        // on, which defaults off; these assertions target the legacy sidebar custom-field editors.
-        if (await cases.common.isRedesignEnabled()) {
-          return this.skip();
-        }
-
+      before(async () => {
         await cases.navigation.navigateToApp();
+        await cases.common.showLegacyCustomFields('cases');
         await cases.api.createConfigWithCustomFields({ customFields, owner: 'cases' });
         await cases.api.createCase({
           customFields: [
@@ -1200,6 +1355,10 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
         await cases.casesTable.waitForCasesToBeListed();
         await cases.casesTable.goToFirstListedCase();
         await header.waitUntilLoadingHasFinished();
+
+        if (await cases.common.isRedesignEnabled()) {
+          await testSubjects.click('case-view-sidebar-legacy-custom-fields-toggle');
+        }
       });
 
       after(async () => {
@@ -1207,6 +1366,44 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
 
       it('updates a custom field correctly', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          const textField = await testSubjects.find(
+            `text-custom-field-view-${customFields[0].key}`
+          );
+          expect(await textField.getVisibleText()).equal('this is a text field value');
+
+          const toggle = await testSubjects.find(`toggle-custom-field-view-${customFields[1].key}`);
+          expect(await toggle.getAttribute('aria-label')).equal('On');
+
+          await testSubjects.click(`template-field-edit-${customFields[0].key}`);
+
+          const inputField = await testSubjects.find(
+            `case-text-custom-field-form-field-${customFields[0].key}`
+          );
+          await inputField.type(' edited!!');
+          await testSubjects.click(`case-toggle-custom-field-form-field-${customFields[1].key}`);
+          await testSubjects.click('section-edit-save');
+          await header.waitUntilLoadingHasFinished();
+
+          const updatedTextField = await testSubjects.find(
+            `text-custom-field-view-${customFields[0].key}`
+          );
+          expect(await updatedTextField.getVisibleText()).equal(
+            'this is a text field value edited!!'
+          );
+
+          const updatedToggle = await testSubjects.find(
+            `toggle-custom-field-view-${customFields[1].key}`
+          );
+          expect(await updatedToggle.getAttribute('aria-label')).equal('Off');
+
+          const userActions = await find.allByCssSelector(
+            '[data-test-subj*="customFields-update-action"]'
+          );
+          expect(userActions).length(2);
+          return;
+        }
+
         const textField = await testSubjects.find(`case-text-custom-field-${customFields[0].key}`);
         expect(await textField.getVisibleText()).equal('this is a text field value');
 
@@ -1250,6 +1447,27 @@ export default ({ getPageObject, getService }: FtrProviderContext) => {
       });
 
       it('updates a number custom field correctly', async () => {
+        if (await cases.common.isRedesignEnabled()) {
+          const numberField = await testSubjects.find(
+            `text-custom-field-view-${customFields[2].key}`
+          );
+          expect(await numberField.getVisibleText()).equal('1234');
+
+          await testSubjects.click(`template-field-edit-${customFields[2].key}`);
+          await testSubjects.setValue(
+            `case-number-custom-field-form-field-${customFields[2].key}`,
+            '12345'
+          );
+          await testSubjects.click('section-edit-save');
+          await header.waitUntilLoadingHasFinished();
+
+          const updatedNumberField = await testSubjects.find(
+            `text-custom-field-view-${customFields[2].key}`
+          );
+          expect(await updatedNumberField.getVisibleText()).equal('12345');
+          return;
+        }
+
         const numberField = await testSubjects.find(
           `case-number-custom-field-${customFields[2].key}`
         );

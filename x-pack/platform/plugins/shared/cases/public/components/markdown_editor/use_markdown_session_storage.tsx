@@ -5,10 +5,9 @@
  * 2.0.
  */
 
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isEmpty } from 'lodash';
 import useDebounce from 'react-use/lib/useDebounce';
-import useSessionStorage from 'react-use/lib/useSessionStorage';
 import type { FieldHook } from '@kbn/es-ui-shared-plugin/static/forms/hook_form_lib';
 
 const STORAGE_DEBOUNCE_TIME = 500;
@@ -28,7 +27,32 @@ export const useMarkdownSessionStorage = ({
   const isFirstRender = useRef(true);
   const initialValueRef = useRef(initialValue);
 
-  const [sessionValue, setSessionValue] = useSessionStorage(sessionKey, '', true);
+  if (!isEmpty(sessionKey) && window.sessionStorage.getItem(sessionKey) === null) {
+    window.sessionStorage.setItem(sessionKey, '');
+  }
+  const sessionValue = window.sessionStorage.getItem(sessionKey) ?? '';
+  const fieldValueRef = useRef(field.value);
+  fieldValueRef.current = field.value;
+  const [, cancelDebouncedSave] = useDebounce(
+    () => {
+      if (!isEmpty(sessionKey)) {
+        window.sessionStorage.setItem(sessionKey, fieldValueRef.current);
+      }
+    },
+    STORAGE_DEBOUNCE_TIME,
+    [field.value]
+  );
+  const saveDraft = useCallback(
+    (value = fieldValueRef.current) => {
+      cancelDebouncedSave();
+      if (!isEmpty(sessionKey)) {
+        window.sessionStorage.setItem(sessionKey, value);
+      }
+    },
+    [cancelDebouncedSave, sessionKey]
+  );
+
+  useEffect(() => () => saveDraft(), [saveDraft]);
 
   if (!isEmpty(sessionValue) && !isEmpty(sessionKey) && isFirstRender.current) {
     field.setValue(sessionValue);
@@ -43,15 +67,5 @@ export const useMarkdownSessionStorage = ({
     setHasConflicts(true);
   }
 
-  useDebounce(
-    () => {
-      if (!isEmpty(sessionKey)) {
-        setSessionValue(field.value);
-      }
-    },
-    STORAGE_DEBOUNCE_TIME,
-    [field.value]
-  );
-
-  return { hasConflicts };
+  return { hasConflicts, saveDraft };
 };

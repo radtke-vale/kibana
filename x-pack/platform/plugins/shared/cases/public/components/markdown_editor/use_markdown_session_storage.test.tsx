@@ -40,6 +40,7 @@ describe('useMarkdownSessionStorage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorage.removeItem(sessionKey);
   });
 
   it('should return hasConflicts as false', async () => {
@@ -130,6 +131,38 @@ describe('useMarkdownSessionStorage', () => {
     await waitFor(() => {
       expect(result.current.hasConflicts).toBe(false);
     });
+
+    expect(sessionStorage.getItem(sessionKey)).toBe('new value');
+  });
+
+  it('should save the latest field value when unmounted before the debounce completes', () => {
+    const { rerender, unmount } = renderHook(
+      (props) => {
+        return useMarkdownSessionStorage(props);
+      },
+      {
+        initialProps: { field, sessionKey, initialValue },
+      }
+    );
+
+    rerender({ field: { ...field, value: 'new value' }, sessionKey, initialValue });
+    unmount();
+
+    expect(sessionStorage.getItem(sessionKey)).toBe('new value');
+  });
+
+  it('should save the latest field value on demand before the debounce completes', () => {
+    const { result, rerender } = renderHook(
+      (props) => {
+        return useMarkdownSessionStorage(props);
+      },
+      {
+        initialProps: { field, sessionKey, initialValue },
+      }
+    );
+
+    rerender({ field: { ...field, value: 'new value' }, sessionKey, initialValue });
+    act(() => result.current.saveDraft('new value'));
 
     expect(sessionStorage.getItem(sessionKey)).toBe('new value');
   });

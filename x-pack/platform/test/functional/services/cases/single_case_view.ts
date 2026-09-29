@@ -24,6 +24,7 @@ export function CasesSingleViewServiceProvider(
   const lensPage = getPageObject('lens');
   const appMenu = getPageObject('appMenu');
   const retry = getService('retry');
+  const savedObjectsFinder = getService('savedObjectsFinder');
 
   return {
     async deleteCase() {
@@ -118,12 +119,31 @@ export function CasesSingleViewServiceProvider(
       await testSubjects.existOrFail('savedObjectsFinderTable', { timeout: 10 * 1000 });
 
       // select visualization
-      await testSubjects.setValue('savedObjectFinderSearchInput', visName, {
-        clearWithKeyboard: true,
-      });
-      const sourceSubj = `savedObjectTitle${visName.replaceAll(' ', '-')}`;
-      await testSubjects.click(sourceSubj);
+      const searchTerm = visName.match(/^\[([^\]]+)\]/)?.[1] ?? visName;
+      await savedObjectsFinder.filterEmbeddableNames(searchTerm);
+      const itemList = await testSubjects.find('savedObjectsFinderTable');
+      const itemListBody = await itemList.findByTagName('tbody');
+      const rows = await itemListBody.findAllByCssSelector('tr');
+      let visualizationSelected = false;
+      for (const row of rows) {
+        const buttons = await row.findAllByTagName('button');
+        for (const button of buttons) {
+          if ((await button.getVisibleText()) === visName) {
+            await button.click();
+            visualizationSelected = true;
+            break;
+          }
+        }
+        if (visualizationSelected) {
+          break;
+        }
+      }
+      expect(visualizationSelected).to.be(true);
       await header.waitUntilLoadingHasFinished();
+      if (await casesCommon.isRedesignEnabled()) {
+        return;
+      }
+
       await lensPage.isLensPageOrFail();
 
       // save and return to cases app, add comment
@@ -166,17 +186,24 @@ export function CasesSingleViewServiceProvider(
     },
 
     async openAssigneesPopover() {
-      await common.clickAndValidate('case-view-assignees-edit-button', 'euiSelectableList');
+      const isRedesignEnabled = await casesCommon.isRedesignEnabled();
+      let editButton = 'case-view-assignees-edit-button';
+      if (isRedesignEnabled) {
+        editButton = (await testSubjects.exists('case-view-assign-users-link'))
+          ? 'case-view-assign-users-link'
+          : 'case-view-assignees-add-button';
+      }
+      await common.clickAndValidate(editButton, 'euiSelectableList');
       await header.waitUntilLoadingHasFinished();
     },
 
     async closeAssigneesPopover() {
-      await retry.try(async () => {
-        // Click somewhere outside the popover
-        await testSubjects.click('editable-title-header-value');
-        await header.waitUntilLoadingHasFinished();
-        await testSubjects.missingOrFail('euiSelectableList');
-      });
+      const title = (await casesCommon.isRedesignEnabled())
+        ? 'appHeaderTitle'
+        : 'editable-title-header-value';
+      await testSubjects.click(title);
+      await header.waitUntilLoadingHasFinished();
+      await testSubjects.missingOrFail('euiSelectableList');
     },
 
     async refresh() {
