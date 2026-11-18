@@ -6,10 +6,9 @@
  */
 
 export type * from './types';
-export type { TimelineDensity } from './density';
 export { TIMELINE_DENSITY } from './density';
 export { buildCaseLane, groupCaseMarkers } from './case_lane';
-export { alertTimeMs, buildAlertRows, getBucketIntervalMs, renderAlertRow } from './alert_rows';
+export { alertTimeMs, buildAlertRows, renderAlertRow } from './alert_rows';
 export { ENTRY_CATEGORY_ORDER, buildEntryRows, parseTimelineEntries } from './entry_rows';
 export type { EntryLabelBox, EntryLabelLayout } from './entry_labels';
 export { ENTRY_FLAG_PX, layoutEntryLabels } from './entry_labels';

@@ -57,7 +57,7 @@ export const buildAlertRows = (alerts: readonly IncidentTimelineAlert[]): AlertR
 };
 
 /** The smallest round interval giving at most one bucket per `pxPerBucket` pixels. */
-export const getBucketIntervalMs = (
+const getBucketIntervalMs = (
   window: TimeWindow,
   widthPx: number,
   density: TimelineDensity = TIMELINE_DENSITY

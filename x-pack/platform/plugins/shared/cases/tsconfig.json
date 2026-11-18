@@ -132,7 +132,6 @@
     "@kbn/management-settings-ids",
     "@kbn/core-http-common",
     "@kbn/workflows-ui",
-    "@kbn/alerting-v2-episodes-ui",
   ],
   "exclude": ["target/**/*"]
 }

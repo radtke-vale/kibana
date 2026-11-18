@@ -36,19 +36,16 @@ import { useIncidentTimelineFocus } from './focus_context';
 import { formatRange } from './format';
 import type { AlertCell, TimeWindow, TimelineEntry, TimelineSelection } from './model';
 import {
-  TIMELINE_DENSITY,
   buildDiscoverParams,
   buildTimelineEvents,
   buildTimelineModel,
   parseTimelineEntries,
 } from './model';
-import type { TimelineRenderer } from './renderer/types';
 import { ElasticChartsRenderer } from './renderer/elastic_charts_renderer';
 import { SelectionBar } from './selection_bar';
 import { TimelineTable } from './timeline_table';
 import { useCaseStatusChanges, useIncidentTimelineAlerts } from './use_incident_timeline_data';
 import * as i18n from './translations';
-import { useSpikeOverrides } from './spike/spike_hook'; // SPIKE
 
 type FlyoutState =
   | { readonly mode: 'add'; readonly initial: Partial<IncidentTimelineEntryData> }
@@ -65,14 +62,9 @@ const VIEW_OPTIONS: Array<{ id: TimelineView; label: string }> = [
 
 export interface IncidentTimelineContentProps {
   caseData: CaseUI;
-  renderer?: TimelineRenderer;
 }
 
-export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = ({
-  caseData,
-  renderer: Renderer = ElasticChartsRenderer,
-}) => {
-  const { Renderer: ActiveRenderer, initialZoom } = useSpikeOverrides(caseData.id, Renderer); // SPIKE
+export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = ({ caseData }) => {
   const { permissions, features } = useCasesContext();
   // The host's alerts gate (Security: RBAC plus index read), the one the Alerts view uses.
   const canReadAlerts = features.alerts.read;
@@ -84,7 +76,7 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
   const alertsQuery = useIncidentTimelineAlerts(caseData.id, canReadAlerts);
   const statusQuery = useCaseStatusChanges(caseData.id);
   const [nowMs] = useState(() => Date.now());
-  const [zoom, setZoom] = useState<TimeWindow | undefined>(initialZoom); // SPIKE
+  const [zoom, setZoom] = useState<TimeWindow | undefined>();
   const [showAllRules, setShowAllRules] = useState(false);
   const [selection, setSelection] = useState<TimelineSelection | undefined>();
   const [flyout, setFlyout] = useState<FlyoutState | undefined>();
@@ -94,19 +86,16 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
   const entries = useMemo(() => parseTimelineEntries(caseData.comments), [caseData.comments]);
   const model = useMemo(
     () =>
-      buildTimelineModel(
-        {
-          createdAtMs: Date.parse(caseData.createdAt),
-          createdBy: caseData.createdBy.fullName || caseData.createdBy.username || '',
-          closedAtMs: caseData.closedAt ? Date.parse(caseData.closedAt) : undefined,
-          statusChanges: statusQuery.data ?? [],
-          alerts,
-          entries,
-          nowMs,
-          showAllRules,
-        },
-        TIMELINE_DENSITY
-      ),
+      buildTimelineModel({
+        createdAtMs: Date.parse(caseData.createdAt),
+        createdBy: caseData.createdBy.fullName || caseData.createdBy.username || '',
+        closedAtMs: caseData.closedAt ? Date.parse(caseData.closedAt) : undefined,
+        statusChanges: statusQuery.data ?? [],
+        alerts,
+        entries,
+        nowMs,
+        showAllRules,
+      }),
     [caseData, statusQuery.data, alerts, entries, nowMs, showAllRules]
   );
   const window = zoom ?? model.window;
@@ -365,7 +354,7 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
           />
         </>
       ) : (
-        <ActiveRenderer // SPIKE
+        <ElasticChartsRenderer
           model={model}
           window={window}
           selection={selection}

@@ -33,5 +33,3 @@ export interface TimelineRendererProps {
   onCellClick: (cell: AlertCell) => void;
   onEntryClick: (entry: TimelineEntry) => void;
 }
-
-export type TimelineRenderer = React.ComponentType<TimelineRendererProps>;
