@@ -105,6 +105,8 @@
     "@kbn/response-ops-retry-service",
     "@kbn/openapi-generator",
     "@kbn/deeplinks-workflows",
+    "@kbn/deeplinks-analytics",
+    "@kbn/share-plugin",
     "@kbn/workflows-extensions",
     "@kbn/workflows",
     "@kbn/workflows-ui",
@@ -130,6 +132,7 @@
     "@kbn/management-settings-ids",
     "@kbn/core-http-common",
     "@kbn/workflows-ui",
+    "@kbn/alerting-v2-episodes-ui",
   ],
   "exclude": ["target/**/*"]
 }
