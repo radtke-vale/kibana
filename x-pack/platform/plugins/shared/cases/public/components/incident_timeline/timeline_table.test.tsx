@@ -100,6 +100,17 @@ describe('TimelineTable', () => {
     expect(onDeleteEntry).toHaveBeenCalledWith(entry);
   });
 
+  it('filters the rows by event kind', async () => {
+    renderTable({ canCreate: true, canUpdate: true, canDelete: true });
+
+    await userEvent.type(screen.getByRole('searchbox'), 'kind:alert');
+
+    const rows = screen.getAllByTestId(/^incident-timeline-table-row-/);
+    expect(rows.map((row) => row.getAttribute('data-test-subj'))).toEqual([
+      'incident-timeline-table-row-alert',
+    ]);
+  });
+
   it('hides actions the user lacks permission for', () => {
     renderTable({ canCreate: false, canUpdate: false, canDelete: false });
 

@@ -5,13 +5,27 @@
  * 2.0.
  */
 
+import { useMemo } from 'react';
 import moment from 'moment-timezone';
+import { useDateFormat, useTimeZone } from '../../common/lib/kibana';
 
-export const formatTime = (ms: number, timeZone: string): string =>
-  moment.tz(ms, timeZone).format('MMM D, YYYY HH:mm:ss');
+/** The user's `dateFormat` and `dateFormat:tz` advanced settings. */
+export interface TimeFormat {
+  readonly timeZone: string;
+  readonly dateFormat: string;
+}
 
-export const formatRange = (startMs: number, endMs: number, timeZone: string): string =>
-  `${formatTime(startMs, timeZone)} – ${formatTime(endMs, timeZone)}`;
+export const useTimeFormat = (): TimeFormat => {
+  const timeZone = useTimeZone();
+  const dateFormat = useDateFormat();
+  return useMemo(() => ({ timeZone, dateFormat }), [timeZone, dateFormat]);
+};
+
+export const formatTime = (ms: number, { timeZone, dateFormat }: TimeFormat): string =>
+  moment.tz(ms, timeZone).format(dateFormat);
+
+export const formatRange = (startMs: number, endMs: number, format: TimeFormat): string =>
+  `${formatTime(startMs, format)} – ${formatTime(endMs, format)}`;
 
 export const formatDuration = (ms: number): string => moment.duration(ms).humanize();
 

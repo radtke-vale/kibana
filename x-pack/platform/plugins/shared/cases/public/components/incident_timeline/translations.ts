@@ -237,6 +237,16 @@ export const ENTRY_DELETED = i18n.translate('xpack.cases.incidentTimeline.entryD
   defaultMessage: 'Timeline entry deleted',
 });
 
+export const DELETE_ENTRY_TITLE = (title: string) =>
+  i18n.translate('xpack.cases.incidentTimeline.deleteEntryTitle', {
+    defaultMessage: 'Delete the timeline entry "{title}"?',
+    values: { title },
+  });
+
+export const CREATED_BY = i18n.translate('xpack.cases.incidentTimeline.createdBy', {
+  defaultMessage: 'Created by',
+});
+
 export const LINKED_ALERT = (ruleName: string) =>
   i18n.translate('xpack.cases.incidentTimeline.linkedAlert', {
     defaultMessage: 'Linked alert: {ruleName}',
@@ -260,16 +270,22 @@ export const FIELD_TITLE = i18n.translate('xpack.cases.incidentTimeline.fieldTit
   defaultMessage: 'Title',
 });
 
-export const FIELD_OCCURRED_AT = i18n.translate('xpack.cases.incidentTimeline.fieldOccurredAt', {
-  defaultMessage: 'Occurred at',
+export const FIELD_TIME = i18n.translate('xpack.cases.incidentTimeline.fieldTime', {
+  defaultMessage: 'Time',
 });
 
-export const FIELD_END = i18n.translate('xpack.cases.incidentTimeline.fieldEnd', {
-  defaultMessage: 'End',
+export const FIELD_TIME_HELP = (timeZone: string) =>
+  i18n.translate('xpack.cases.incidentTimeline.fieldTimeHelp', {
+    defaultMessage: 'Set an end time to make the entry a range. Time zone: {timeZone}',
+    values: { timeZone },
+  });
+
+export const START_TIME_ARIA = i18n.translate('xpack.cases.incidentTimeline.startTimeAria', {
+  defaultMessage: 'Start time',
 });
 
-export const FIELD_END_HELP = i18n.translate('xpack.cases.incidentTimeline.fieldEndHelp', {
-  defaultMessage: 'Optional. Set it to make the entry a range.',
+export const END_TIME_ARIA = i18n.translate('xpack.cases.incidentTimeline.endTimeAria', {
+  defaultMessage: 'End time, optional',
 });
 
 export const FIELD_CATEGORY = i18n.translate('xpack.cases.incidentTimeline.fieldCategory', {
@@ -284,12 +300,6 @@ export const CATEGORY_NONE = i18n.translate('xpack.cases.incidentTimeline.catego
   defaultMessage: 'None',
 });
 
-export const TIME_ZONE_HELP = (timeZone: string) =>
-  i18n.translate('xpack.cases.incidentTimeline.timeZoneHelp', {
-    defaultMessage: 'Time zone: {timeZone}',
-    values: { timeZone },
-  });
-
 export const TITLE_REQUIRED = i18n.translate('xpack.cases.incidentTimeline.titleRequired', {
   defaultMessage: 'Enter a title.',
 });
@@ -301,7 +311,7 @@ export const TOO_LONG = (max: number) =>
   });
 
 export const END_BEFORE_START = i18n.translate('xpack.cases.incidentTimeline.endBeforeStart', {
-  defaultMessage: 'End must not be before Occurred at.',
+  defaultMessage: 'The end time must not be before the start time.',
 });
 
 export const SAVE = i18n.translate('xpack.cases.incidentTimeline.save', {

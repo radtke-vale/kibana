@@ -23,17 +23,18 @@ import { INCIDENT_TIMELINE_ENTRY_ATTACHMENT_TYPE } from '../../../common/constan
 import type { IncidentTimelineAlert } from '../../../common/types/api';
 import type { IncidentTimelineEntryData } from '../../../common/types/domain/attachment/incident_timeline_entry/v2';
 import type { CaseUI } from '../../../common/ui/types';
-import { useKibana, useTimeZone } from '../../common/lib/kibana';
+import { useKibana } from '../../common/lib/kibana';
 import { useCasesToast } from '../../common/use_cases_toast';
 import { useCreateAttachments } from '../../containers/use_create_attachments';
 import { useDeleteComment } from '../../containers/use_delete_comment';
 import type { ServerError } from '../../types';
 import { useCasesContext } from '../cases_context/use_cases_context';
 import { useRefreshCaseViewPage } from '../case_view/use_on_refresh_case_view_page';
+import { DeleteAttachmentConfirmationModal } from '../user_actions/delete_attachment_confirmation_modal';
 import { updateIncidentTimelineEntry } from './api';
 import { EntryFlyout } from './entry_flyout';
 import { useIncidentTimelineFocus } from './focus_context';
-import { formatRange } from './format';
+import { formatRange, useTimeFormat } from './format';
 import type { AlertCell, TimeWindow, TimelineEntry, TimelineSelection } from './model';
 import {
   buildDiscoverParams,
@@ -69,7 +70,7 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
   // The host's alerts gate (Security: RBAC plus index read), the one the Alerts view uses.
   const canReadAlerts = features.alerts.read;
   const { share } = useKibana().services;
-  const timeZone = useTimeZone();
+  const timeFormat = useTimeFormat();
   const { showErrorToast } = useCasesToast();
   const refreshCaseViewPage = useRefreshCaseViewPage();
 
@@ -80,6 +81,7 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
   const [showAllRules, setShowAllRules] = useState(false);
   const [selection, setSelection] = useState<TimelineSelection | undefined>();
   const [flyout, setFlyout] = useState<FlyoutState | undefined>();
+  const [pendingDelete, setPendingDelete] = useState<TimelineEntry | undefined>();
   const [view, setView] = useState<TimelineView>('chart');
 
   const alerts = alertsQuery.data?.alerts ?? EMPTY_ALERTS;
@@ -202,17 +204,18 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
 
   const onEditEntry = useCallback((entry: TimelineEntry) => setFlyout({ mode: 'edit', entry }), []);
 
-  const onDeleteEntry = useCallback(
-    (entry: TimelineEntry) => {
-      deleteEntry({
-        caseId: caseData.id,
-        commentId: entry.id,
-        successToasterTitle: i18n.ENTRY_DELETED,
-      });
-      setSelection(undefined);
-    },
-    [deleteEntry, caseData.id]
-  );
+  const onDeleteEntry = useCallback((entry: TimelineEntry) => setPendingDelete(entry), []);
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    deleteEntry({
+      caseId: caseData.id,
+      commentId: pendingDelete.id,
+      successToasterTitle: i18n.ENTRY_DELETED,
+    });
+    setPendingDelete(undefined);
+    setSelection(undefined);
+  };
 
   const alertsPlaceholder = (() => {
     if (!canReadAlerts) {
@@ -297,7 +300,7 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
         </EuiFlexItem>
         <EuiFlexItem>
           <EuiText size="s" color="subdued" data-test-subj="incident-timeline-window">
-            {formatRange(window.startMs, window.endMs, timeZone)}
+            {formatRange(window.startMs, window.endMs, timeFormat)}
           </EuiText>
         </EuiFlexItem>
         <EuiFlexItem grow={false}>
@@ -403,6 +406,14 @@ export const IncidentTimelineContent: React.FC<IncidentTimelineContentProps> = (
             onClear={() => setSelection(undefined)}
           />
         </>
+      )}
+      {pendingDelete && (
+        <DeleteAttachmentConfirmationModal
+          title={i18n.DELETE_ENTRY_TITLE(pendingDelete.data.title)}
+          confirmButtonText={i18n.DELETE}
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(undefined)}
+        />
       )}
       {flyout && (
         <EntryFlyout

@@ -6,20 +6,11 @@
  */
 
 import React, { useMemo } from 'react';
-import type { EuiBasicTableColumn } from '@elastic/eui';
-import {
-  EuiBadge,
-  EuiButtonEmpty,
-  EuiButtonIcon,
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiInMemoryTable,
-  EuiText,
-  EuiToolTip,
-} from '@elastic/eui';
+import type { EuiBasicTableColumn, EuiSearchBarProps } from '@elastic/eui';
+import { EuiBadge, EuiInMemoryTable, EuiText } from '@elastic/eui';
 import type { IncidentTimelineAlert } from '../../../common/types/api';
-import { useTimeZone } from '../../common/lib/kibana';
-import { formatRange, formatTime } from './format';
+import type { TimeFormat } from './format';
+import { formatRange, formatTime, useTimeFormat } from './format';
 import type { TimelineEntry, TimelineEvent } from './model';
 import { ViewAlertAction } from './selection_bar';
 import * as i18n from './translations';
@@ -46,7 +37,7 @@ const TIME_SOURCE_LABELS: Record<IncidentTimelineAlert['timeSource'], string> = 
   timestamp: i18n.TIME_SOURCE_WRITE,
 };
 
-const Details: React.FC<{ event: TimelineEvent; timeZone: string }> = ({ event, timeZone }) => {
+const Details: React.FC<{ event: TimelineEvent; format: TimeFormat }> = ({ event, format }) => {
   if (event.kind === 'status') {
     const { marker } = event;
     return (
@@ -63,7 +54,7 @@ const Details: React.FC<{ event: TimelineEvent; timeZone: string }> = ({ event, 
         <EuiBadge color="hollow">{i18n.CATEGORY_LABELS[entry.category]}</EuiBadge>{' '}
         <strong>{entry.data.title}</strong>
         {entry.endMs !== undefined && (
-          <div>{formatRange(entry.occurredMs, entry.endMs, timeZone)}</div>
+          <div>{formatRange(entry.occurredMs, entry.endMs, format)}</div>
         )}
         <div>{i18n.BY_USER(entry.createdBy)}</div>
       </EuiText>
@@ -78,6 +69,27 @@ const Details: React.FC<{ event: TimelineEvent; timeZone: string }> = ({ event, 
   );
 };
 
+const SEARCH: EuiSearchBarProps = {
+  box: { incremental: true },
+  filters: [
+    {
+      type: 'field_value_selection',
+      field: 'kind',
+      name: i18n.COLUMN_EVENT,
+      multiSelect: 'or',
+      options: (Object.keys(EVENT_LABELS) as Array<TimelineEvent['kind']>).map((kind) => ({
+        value: kind,
+        name: EVENT_LABELS[kind],
+      })),
+    },
+  ],
+};
+
+const isEntry = (event: TimelineEvent): event is Extract<TimelineEvent, { kind: 'entry' }> =>
+  event.kind === 'entry';
+const isAlert = (event: TimelineEvent): event is Extract<TimelineEvent, { kind: 'alert' }> =>
+  event.kind === 'alert';
+
 /** Every event as a keyboard-operable table, the accessible alternative to the chart. */
 export const TimelineTable: React.FC<TimelineTableProps> = ({
   events,
@@ -88,15 +100,16 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
   onEditEntry,
   onDeleteEntry,
 }) => {
-  const timeZone = useTimeZone();
+  const format = useTimeFormat();
 
   const columns = useMemo<Array<EuiBasicTableColumn<TimelineEvent>>>(
     () => [
       {
         field: 'atMs',
         name: i18n.COLUMN_TIME,
-        width: '170px',
-        render: (atMs: number) => formatTime(atMs, timeZone),
+        width: '190px',
+        sortable: true,
+        render: (atMs: number) => formatTime(atMs, format),
       },
       {
         field: 'kind',
@@ -106,91 +119,79 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
       },
       {
         name: i18n.COLUMN_DETAILS,
-        render: (event: TimelineEvent) => <Details event={event} timeZone={timeZone} />,
+        render: (event: TimelineEvent) => <Details event={event} format={format} />,
       },
       {
         name: i18n.COLUMN_TIME_SOURCE,
         width: '130px',
-        render: (event: TimelineEvent) => {
-          if (event.kind !== 'alert') return null;
-          return TIME_SOURCE_LABELS[event.alert.timeSource];
-        },
+        render: (event: TimelineEvent) =>
+          isAlert(event) ? TIME_SOURCE_LABELS[event.alert.timeSource] : null,
       },
       {
         name: i18n.COLUMN_HOST,
         render: (event: TimelineEvent) =>
-          event.kind === 'alert' ? event.alert.hostNames.join(', ') : null,
+          isAlert(event) ? event.alert.hostNames.join(', ') : null,
       },
       {
         name: i18n.COLUMN_USER,
         render: (event: TimelineEvent) =>
-          event.kind === 'alert' ? event.alert.userNames.join(', ') : null,
+          isAlert(event) ? event.alert.userNames.join(', ') : null,
       },
       {
         name: i18n.COLUMN_ACTIONS,
         width: '200px',
-        render: (event: TimelineEvent) => {
-          if (event.kind === 'alert') {
-            const { alert, ruleName } = event;
-            return (
-              <EuiFlexGroup gutterSize="xs" alignItems="center" responsive={false}>
-                <ViewAlertAction alertId={alert.id} index={alert.index} />
-                {canCreate && (
-                  <EuiFlexItem grow={false}>
-                    <EuiButtonEmpty
-                      size="xs"
-                      iconType="flag"
-                      onClick={() => onMarkAsSignificant(alert, ruleName)}
-                      aria-label={i18n.MARK_AS_SIGNIFICANT_ARIA(
-                        ruleName,
-                        formatTime(event.atMs, timeZone)
-                      )}
-                      data-test-subj="incident-timeline-table-mark-significant"
-                    >
-                      {i18n.MARK_AS_SIGNIFICANT}
-                    </EuiButtonEmpty>
-                  </EuiFlexItem>
-                )}
-              </EuiFlexGroup>
-            );
-          }
-          if (event.kind === 'entry') {
-            const { entry } = event;
-            return (
-              <EuiFlexGroup gutterSize="xs" alignItems="center" responsive={false}>
-                {canUpdate && (
-                  <EuiFlexItem grow={false}>
-                    <EuiToolTip content={i18n.EDIT} disableScreenReaderOutput>
-                      <EuiButtonIcon
-                        iconType="pencil"
-                        aria-label={i18n.EDIT_ENTRY_ARIA(entry.data.title)}
-                        onClick={() => onEditEntry(entry)}
-                        data-test-subj="incident-timeline-table-entry-edit"
-                      />
-                    </EuiToolTip>
-                  </EuiFlexItem>
-                )}
-                {canDelete && (
-                  <EuiFlexItem grow={false}>
-                    <EuiToolTip content={i18n.DELETE} disableScreenReaderOutput>
-                      <EuiButtonIcon
-                        iconType="trash"
-                        color="danger"
-                        aria-label={i18n.DELETE_ENTRY_ARIA(entry.data.title)}
-                        onClick={() => onDeleteEntry(entry)}
-                        data-test-subj="incident-timeline-table-entry-delete"
-                      />
-                    </EuiToolTip>
-                  </EuiFlexItem>
-                )}
-              </EuiFlexGroup>
-            );
-          }
-          return null;
-        },
+        actions: [
+          {
+            available: isAlert,
+            render: (event: TimelineEvent) =>
+              isAlert(event) ? (
+                <ViewAlertAction alertId={event.alert.id} index={event.alert.index} />
+              ) : (
+                <></>
+              ),
+          },
+          {
+            type: 'button',
+            name: i18n.MARK_AS_SIGNIFICANT,
+            description: (event: TimelineEvent) =>
+              isAlert(event)
+                ? i18n.MARK_AS_SIGNIFICANT_ARIA(event.ruleName, formatTime(event.atMs, format))
+                : '',
+            available: (event: TimelineEvent) => canCreate && isAlert(event),
+            onClick: (event: TimelineEvent) => {
+              if (isAlert(event)) onMarkAsSignificant(event.alert, event.ruleName);
+            },
+            'data-test-subj': 'incident-timeline-table-mark-significant',
+          },
+          {
+            type: 'icon',
+            name: i18n.EDIT,
+            description: (event: TimelineEvent) =>
+              isEntry(event) ? i18n.EDIT_ENTRY_ARIA(event.entry.data.title) : '',
+            icon: 'pencil',
+            available: (event: TimelineEvent) => canUpdate && isEntry(event),
+            onClick: (event: TimelineEvent) => {
+              if (isEntry(event)) onEditEntry(event.entry);
+            },
+            'data-test-subj': 'incident-timeline-table-entry-edit',
+          },
+          {
+            type: 'icon',
+            name: i18n.DELETE,
+            description: (event: TimelineEvent) =>
+              isEntry(event) ? i18n.DELETE_ENTRY_ARIA(event.entry.data.title) : '',
+            icon: 'trash',
+            color: 'danger',
+            available: (event: TimelineEvent) => canDelete && isEntry(event),
+            onClick: (event: TimelineEvent) => {
+              if (isEntry(event)) onDeleteEntry(event.entry);
+            },
+            'data-test-subj': 'incident-timeline-table-entry-delete',
+          },
+        ],
       },
     ],
-    [timeZone, canCreate, canUpdate, canDelete, onMarkAsSignificant, onEditEntry, onDeleteEntry]
+    [format, canCreate, canUpdate, canDelete, onMarkAsSignificant, onEditEntry, onDeleteEntry]
   );
 
   return (
@@ -199,6 +200,8 @@ export const TimelineTable: React.FC<TimelineTableProps> = ({
       items={events}
       itemId="id"
       columns={columns}
+      search={SEARCH}
+      sorting={{ sort: { field: 'atMs', direction: 'asc' } }}
       pagination={{ initialPageSize: 25, pageSizeOptions: [25, 50, 100] }}
       rowProps={(event) => ({ 'data-test-subj': `incident-timeline-table-row-${event.kind}` })}
       data-test-subj="incident-timeline-table"

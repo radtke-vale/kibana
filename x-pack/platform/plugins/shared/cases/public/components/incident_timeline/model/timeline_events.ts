@@ -6,7 +6,7 @@
  */
 
 import type { IncidentTimelineAlert } from '../../../../common/types/api';
-import { buildAlertRows } from './alert_rows';
+import { alertTimeMs } from './alert_rows';
 import type { CaseMarker, TimelineEntry, TimelineEvent } from './types';
 
 const KIND_ORDER: Record<TimelineEvent['kind'], number> = { status: 0, entry: 1, alert: 2 };
@@ -38,16 +38,14 @@ export const buildTimelineEvents = ({
         entry,
       })
     ),
-    ...buildAlertRows(alerts).flatMap(({ ruleName, alerts: rowAlerts }) =>
-      rowAlerts.map(
-        (alert): TimelineEvent => ({
-          kind: 'alert',
-          id: `alert-${alert.id}`,
-          atMs: Date.parse(alert.time),
-          alert,
-          ruleName,
-        })
-      )
+    ...alerts.map(
+      (alert): TimelineEvent => ({
+        kind: 'alert',
+        id: `alert-${alert.id}`,
+        atMs: alertTimeMs(alert),
+        alert,
+        ruleName: alert.ruleName ?? alert.ruleId ?? '',
+      })
     ),
   ];
   return events.sort((a, b) => a.atMs - b.atMs || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);

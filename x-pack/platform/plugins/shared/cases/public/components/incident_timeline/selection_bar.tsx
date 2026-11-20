@@ -19,10 +19,10 @@ import {
 } from '@elastic/eui';
 import { SECURITY_ALERT_ATTACHMENT_TYPE } from '../../../common/constants/attachments';
 import type { IncidentTimelineAlert } from '../../../common/types/api';
-import { useTimeZone } from '../../common/lib/kibana';
 import { useCasesContext } from '../cases_context/use_cases_context';
+import { MarkdownRenderer } from '../markdown_editor';
 import { renderAttachmentAction } from '../user_actions/attachment_action';
-import { formatRange, formatTime } from './format';
+import { formatRange, formatTime, useTimeFormat } from './format';
 import type { TimelineSelection } from './model';
 import * as i18n from './translations';
 
@@ -63,7 +63,7 @@ export const SelectionBar: React.FC<SelectionBarProps> = ({
   onDelete,
   onClear,
 }) => {
-  const timeZone = useTimeZone();
+  const timeFormat = useTimeFormat();
 
   if (selection.kind === 'alert') {
     const { alert, ruleName } = selection;
@@ -78,7 +78,7 @@ export const SelectionBar: React.FC<SelectionBarProps> = ({
           <EuiFlexItem>
             <EuiText size="s">{`${ruleName} · ${formatTime(
               Date.parse(alert.time),
-              timeZone
+              timeFormat
             )}`}</EuiText>
           </EuiFlexItem>
           <ViewAlertAction alertId={alert.id} index={alert.index} />
@@ -119,12 +119,12 @@ export const SelectionBar: React.FC<SelectionBarProps> = ({
             <strong>{data.title}</strong>
             <div>
               {entry.endMs !== undefined
-                ? formatRange(entry.occurredMs, entry.endMs, timeZone)
-                : formatTime(entry.occurredMs, timeZone)}
+                ? formatRange(entry.occurredMs, entry.endMs, timeFormat)
+                : formatTime(entry.occurredMs, timeFormat)}
               {' · '}
               {i18n.BY_USER(entry.createdBy)}
             </div>
-            {data.content && <p>{data.content}</p>}
+            {data.content && <MarkdownRenderer textSize="s">{data.content}</MarkdownRenderer>}
             {linkedAlert && <div>{i18n.LINKED_ALERT(linkedAlert.ruleName ?? linkedAlert.id)}</div>}
             {linkedAlertMissing && <div>{i18n.LINKED_ALERT_NOT_ATTACHED}</div>}
           </EuiText>

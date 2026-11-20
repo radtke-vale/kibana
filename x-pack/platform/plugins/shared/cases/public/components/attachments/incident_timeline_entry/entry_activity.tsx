@@ -6,25 +6,18 @@
  */
 
 import React from 'react';
-import {
-  EuiBadge,
-  EuiButtonEmpty,
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiMarkdownFormat,
-  EuiText,
-} from '@elastic/eui';
+import { EuiBadge, EuiButtonEmpty, EuiFlexGroup, EuiFlexItem, EuiText } from '@elastic/eui';
 import type { IncidentTimelineEntryData } from '../../../../common/types/domain/attachment/incident_timeline_entry/v2';
 import type { UnifiedValueAttachmentViewProps } from '../../../client/attachment_framework/types';
-import { useTimeZone } from '../../../common/lib/kibana';
-import { formatRange, formatTime } from '../../incident_timeline/format';
+import { formatRange, formatTime, useTimeFormat } from '../../incident_timeline/format';
+import { MarkdownRenderer } from '../../markdown_editor';
 import { useIncidentTimelineFocus } from '../../incident_timeline/focus_context';
 import * as i18n from '../../incident_timeline/translations';
 
 export type EntryViewProps = UnifiedValueAttachmentViewProps<IncidentTimelineEntryData>;
 
 export const EntryActivityBody: React.FC<EntryViewProps> = ({ data }) => {
-  const timeZone = useTimeZone();
+  const timeFormat = useTimeFormat();
   const occurredMs = Date.parse(data.occurredAt);
   return (
     <EuiFlexGroup
@@ -42,8 +35,8 @@ export const EntryActivityBody: React.FC<EntryViewProps> = ({ data }) => {
           <EuiFlexItem grow={false}>
             <EuiText size="s" color="subdued">
               {data.endAt
-                ? formatRange(occurredMs, Date.parse(data.endAt), timeZone)
-                : formatTime(occurredMs, timeZone)}
+                ? formatRange(occurredMs, Date.parse(data.endAt), timeFormat)
+                : formatTime(occurredMs, timeFormat)}
             </EuiText>
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -55,7 +48,7 @@ export const EntryActivityBody: React.FC<EntryViewProps> = ({ data }) => {
       </EuiFlexItem>
       {data.content && (
         <EuiFlexItem>
-          <EuiMarkdownFormat textSize="s">{data.content}</EuiMarkdownFormat>
+          <MarkdownRenderer textSize="s">{data.content}</MarkdownRenderer>
         </EuiFlexItem>
       )}
     </EuiFlexGroup>

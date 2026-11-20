@@ -12,6 +12,7 @@ import {
   EuiButton,
   EuiButtonEmpty,
   EuiDatePicker,
+  EuiDatePickerRange,
   EuiFieldText,
   EuiFlexGroup,
   EuiFlexItem,
@@ -21,7 +22,6 @@ import {
   EuiFlyoutHeader,
   EuiForm,
   EuiFormRow,
-  EuiMarkdownEditor,
   EuiSelect,
   EuiTitle,
   useGeneratedHtmlId,
@@ -36,8 +36,13 @@ import {
   MAX_INCIDENT_TIMELINE_ENTRY_CONTENT_LENGTH,
   MAX_INCIDENT_TIMELINE_ENTRY_TITLE_LENGTH,
 } from '../../../common/types/domain/attachment/incident_timeline_entry/v2';
-import { useTimeZone } from '../../common/lib/kibana';
+import { MarkdownEditor } from '../markdown_editor';
+import { ID as LensPluginId } from '../markdown_editor/plugins/lens/constants';
+import { useTimeFormat } from './format';
 import * as i18n from './translations';
+
+/** Inserting a Lens visualization leaves the page, which would drop the open flyout. */
+const DISABLED_MARKDOWN_PLUGINS = [LensPluginId];
 
 export interface EntryFlyoutProps {
   /** Values the form starts from: an existing entry, or a prefill from an alert. */
@@ -58,7 +63,8 @@ export const EntryFlyout: React.FC<EntryFlyoutProps> = ({
   onSubmit,
   onClose,
 }) => {
-  const timeZone = useTimeZone();
+  const { timeZone, dateFormat } = useTimeFormat();
+  const pickerDateFormat = dateFormat.replace(/\.?SSS/, '');
   const titleId = useGeneratedHtmlId({ prefix: 'incidentTimelineEntryFlyout' });
   const [title, setTitle] = useState(initial.title ?? '');
   const [occurredAt, setOccurredAt] = useState<Moment | null>(
@@ -130,37 +136,39 @@ export const EntryFlyout: React.FC<EntryFlyoutProps> = ({
             />
           </EuiFormRow>
           <EuiFormRow
-            label={i18n.FIELD_OCCURRED_AT}
-            helpText={i18n.TIME_ZONE_HELP(timeZone)}
-            fullWidth
-          >
-            <EuiDatePicker
-              selected={occurredAt}
-              onChange={setOccurredAt}
-              showTimeSelect
-              timeFormat="HH:mm"
-              dateFormat="MMM D, YYYY HH:mm:ss"
-              fullWidth
-              data-test-subj="incident-timeline-entry-occurred-at"
-            />
-          </EuiFormRow>
-          <EuiFormRow
-            label={i18n.FIELD_END}
-            helpText={i18n.FIELD_END_HELP}
+            label={i18n.FIELD_TIME}
+            helpText={i18n.FIELD_TIME_HELP(timeZone)}
             isInvalid={endError !== undefined}
             error={endError}
             fullWidth
           >
-            <EuiDatePicker
-              selected={endAt}
-              onChange={setEndAt}
-              onClear={() => setEndAt(null)}
-              showTimeSelect
-              timeFormat="HH:mm"
-              dateFormat="MMM D, YYYY HH:mm:ss"
-              isInvalid={endError !== undefined}
+            <EuiDatePickerRange
               fullWidth
-              data-test-subj="incident-timeline-entry-end-at"
+              isInvalid={endError !== undefined}
+              startDateControl={
+                <EuiDatePicker
+                  selected={occurredAt}
+                  onChange={setOccurredAt}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  dateFormat={pickerDateFormat}
+                  aria-label={i18n.START_TIME_ARIA}
+                  data-test-subj="incident-timeline-entry-occurred-at"
+                />
+              }
+              endDateControl={
+                <EuiDatePicker
+                  selected={endAt}
+                  onChange={setEndAt}
+                  onClear={() => setEndAt(null)}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  dateFormat={pickerDateFormat}
+                  minDate={occurredAt ?? undefined}
+                  aria-label={i18n.END_TIME_ARIA}
+                  data-test-subj="incident-timeline-entry-end-at"
+                />
+              }
             />
           </EuiFormRow>
           <EuiFormRow label={i18n.FIELD_CATEGORY} fullWidth>
@@ -184,11 +192,13 @@ export const EntryFlyout: React.FC<EntryFlyoutProps> = ({
             error={contentError}
             fullWidth
           >
-            <EuiMarkdownEditor
-              aria-label={i18n.FIELD_TEXT}
+            <MarkdownEditor
+              ariaLabel={i18n.FIELD_TEXT}
+              editorId="incident-timeline-entry-text"
               value={content}
               onChange={setContent}
               height={160}
+              disabledUiPlugins={DISABLED_MARKDOWN_PLUGINS}
               data-test-subj="incident-timeline-entry-text"
             />
           </EuiFormRow>

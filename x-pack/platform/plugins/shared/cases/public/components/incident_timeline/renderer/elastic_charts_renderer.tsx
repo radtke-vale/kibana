@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { css } from '@emotion/react';
 import type {
   AnnotationClickListener,
@@ -13,6 +13,7 @@ import type {
   CustomTooltip,
   ElementClickListener,
   PartialTheme,
+  PointerUpdateListener,
   Theme,
   XYChartElementEvent,
 } from '@elastic/charts';
@@ -27,12 +28,16 @@ import {
   ScaleType,
   Settings,
   Tooltip,
+  TooltipContainer,
+  TooltipHeader,
+  TooltipMetricRow,
   TooltipType,
   getChartsTheme,
 } from '@elastic/charts';
 import type { EuiThemeComputed } from '@elastic/eui';
 import {
   EuiBadge,
+  EuiDescriptionList,
   EuiFlexGroup,
   EuiFlexItem,
   EuiIcon,
@@ -46,7 +51,6 @@ import {
 } from '@elastic/eui';
 import { CaseStatuses } from '../../../../common/types/domain';
 import type { IncidentTimelineAlert } from '../../../../common/types/api';
-import { useTimeZone } from '../../../common/lib/kibana';
 import { statuses } from '../../status/config';
 import type {
   AlertCell,
@@ -67,7 +71,8 @@ import {
   layoutEntryLabels,
   renderAlertRow,
 } from '../model';
-import { formatAxisTick, formatDuration, formatRange, formatTime } from '../format';
+import type { TimeFormat } from '../format';
+import { formatAxisTick, formatDuration, formatRange, formatTime, useTimeFormat } from '../format';
 import * as i18n from '../translations';
 import type { TimelineRendererProps } from './types';
 
@@ -79,15 +84,20 @@ const AXIS_HEIGHT = 40;
 const MIN_CELL_LABEL_PX = 14;
 const ENTRY_LEVEL_PX = 20;
 
+/** A vertical cursor only; the horizontal cross line means nothing on a lane row. */
+const ROW_CROSSHAIR: PartialTheme['crosshair'] = { crossLine: { visible: false } };
+
 const ZERO_MARGINS: PartialTheme = {
   chartMargins: { top: 0, bottom: 0, left: 0, right: 0 },
   chartPaddings: { top: 0, bottom: 0, left: 0, right: 0 },
+  crosshair: ROW_CROSSHAIR,
 };
 
 /** Leaves room above the row for annotation markers. */
 const MARKER_ROOM: PartialTheme = {
   chartMargins: { top: 14, bottom: 0, left: 0, right: 0 },
   chartPaddings: { top: 0, bottom: 0, left: 0, right: 0 },
+  crosshair: ROW_CROSSHAIR,
 };
 
 const MARKER_ICONS: Record<CaseMarkerKind, string> = {
@@ -133,36 +143,43 @@ const markerColor = (euiTheme: EuiThemeComputed, kind: CaseMarkerKind): string =
   return euiTheme.colors.borderStrongSuccess;
 };
 
-const TooltipBox: React.FC<{ title: React.ReactNode; children?: React.ReactNode }> = ({
-  title,
-  children,
-}) => {
-  const { euiTheme } = useEuiTheme();
-  return (
-    <div
-      css={css`
-        background: ${euiTheme.colors.backgroundBasePlain};
-        border: ${euiTheme.border.thin};
-        border-radius: ${euiTheme.border.radius.medium};
-        padding: ${euiTheme.size.s};
-        max-width: 360px;
-      `}
-    >
-      <EuiText size="xs">
-        <strong>{title}</strong>
-        {children}
-      </EuiText>
-    </div>
-  );
-};
+interface TooltipRow {
+  readonly label: string;
+  readonly value: string | number;
+}
 
-const TooltipLine: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div>
-    {label}
-    {': '}
-    {value}
-  </div>
+const TimelineTooltip: React.FC<{ title: string; rows: ReadonlyArray<TooltipRow | false> }> = ({
+  title,
+  rows,
+}) => (
+  <TooltipContainer>
+    <TooltipHeader>{title}</TooltipHeader>
+    {rows.map(
+      (row) => row && <TooltipMetricRow key={row.label} label={row.label} metric={row.value} />
+    )}
+  </TooltipContainer>
 );
+
+/**
+ * Each lane row is its own chart, so the hover cursor is forwarded to the other rows to line up
+ * an alert with the entries and status changes at the same time.
+ */
+const useSyncedCursor = () => {
+  const charts = useRef(new Map<string, Chart>());
+  const registerChart = useCallback((id: string, chart: Chart | null) => {
+    if (chart) {
+      charts.current.set(id, chart);
+    } else {
+      charts.current.delete(id);
+    }
+  }, []);
+  const onPointerUpdate = useCallback<PointerUpdateListener>((event) => {
+    charts.current.forEach((chart, id) => {
+      if (id !== event.chartId) chart.dispatchExternalPointerEvent(event);
+    });
+  }, []);
+  return { registerChart, onPointerUpdate };
+};
 
 const distinctSummary = (values: readonly string[]): string =>
   values.length === 0 ? '0' : i18n.DISTINCT_OF(values.slice(0, 3).join(', '), values.length);
@@ -173,6 +190,8 @@ interface RowChartProps {
   window: TimeWindow;
   theme: Theme;
   timeZone: string;
+  registerChart: (id: string, chart: Chart | null) => void;
+  onPointerUpdate: PointerUpdateListener;
   tooltip?: CustomTooltip;
   onBrush: (window: TimeWindow) => void;
   onElementClick?: ElementClickListener;
@@ -189,6 +208,8 @@ const RowChart: React.FC<RowChartProps> = ({
   window,
   theme,
   timeZone,
+  registerChart,
+  onPointerUpdate,
   tooltip,
   onBrush,
   onElementClick,
@@ -197,6 +218,10 @@ const RowChart: React.FC<RowChartProps> = ({
   hasMarkers = false,
   children,
 }) => {
+  const chartRef = useCallback(
+    (chart: Chart | null) => registerChart(id, chart),
+    [registerChart, id]
+  );
   const onBrushEnd = useCallback<BrushEndListener>(
     ({ x }) => {
       const [startMs, endMs] = x ?? [];
@@ -215,7 +240,7 @@ const RowChart: React.FC<RowChartProps> = ({
   );
 
   return (
-    <Chart size={{ height }} id={id}>
+    <Chart size={{ height }} id={id} ref={chartRef}>
       <Settings
         baseTheme={theme}
         theme={hasMarkers ? MARKER_ROOM : ZERO_MARGINS}
@@ -224,12 +249,17 @@ const RowChart: React.FC<RowChartProps> = ({
         onBrushEnd={onBrushEnd}
         onElementClick={onElementClick}
         onAnnotationClick={onAnnotationClick}
+        onPointerUpdate={onPointerUpdate}
+        pointerUpdateTrigger="x"
+        externalPointerEvents={{ tooltip: { visible: false } }}
         locale="en"
       />
+      {/* No snapping: the row's only series is the two invisible window-edge points. */}
       <Tooltip
-        type={tooltip ? TooltipType.Follow : TooltipType.None}
+        type={tooltip ? TooltipType.Follow : TooltipType.Crosshairs}
         customTooltip={tooltip}
         showNullValues={false}
+        snap={false}
       />
       <Axis
         id={`${id}-y`}
@@ -329,8 +359,8 @@ const CaseMarkers: React.FC<{
   groups: readonly CaseMarkerGroup[];
   window: TimeWindow;
   widthPx: number;
-  timeZone: string;
-}> = ({ groups, window, widthPx, timeZone }) => {
+  format: TimeFormat;
+}> = ({ groups, window, widthPx, format }) => {
   const { euiTheme } = useEuiTheme();
   const pxPerMs = widthPx / (window.endMs - window.startMs);
   return (
@@ -360,7 +390,7 @@ const CaseMarkers: React.FC<{
               content={group.markers.map((marker, i) => (
                 <div key={i}>
                   {merged && <strong>{`${i18n.MARKER_LABELS[marker.kind]} `}</strong>}
-                  {formatTime(marker.atMs, timeZone)} {i18n.BY_USER(marker.user)}
+                  {formatTime(marker.atMs, format)} {i18n.BY_USER(marker.user)}
                   {marker.source ? ` ${i18n.VIA_SOURCE(marker.source)}` : ''}
                 </div>
               ))}
@@ -368,7 +398,7 @@ const CaseMarkers: React.FC<{
               <span
                 tabIndex={0}
                 role="img"
-                aria-label={i18n.MARKER_ARIA(title, formatTime(group.atMs, timeZone))}
+                aria-label={i18n.MARKER_ARIA(title, formatTime(group.atMs, format))}
               >
                 {merged ? (
                   <EuiBadge color="hollow">{group.markers.length}</EuiBadge>
@@ -393,8 +423,8 @@ const CaseRowChart: React.FC<{
   spans: readonly CaseSpan[];
   groups: readonly CaseMarkerGroup[];
   common: Omit<RowChartProps, 'id' | 'height'>;
-  timeZone: string;
-}> = ({ spans, groups, common, timeZone }) => {
+  format: TimeFormat;
+}> = ({ spans, groups, common, format }) => {
   const { euiTheme } = useEuiTheme();
 
   return (
@@ -406,13 +436,13 @@ const CaseRowChart: React.FC<{
           dataValues={[{ coordinates: { x0: span.startMs, x1: span.endMs, y0: 0.25, y1: 0.75 } }]}
           style={{ fill: spanColor(euiTheme, span.status), opacity: 1, strokeWidth: 0 }}
           customTooltip={() => (
-            <TooltipBox title={statuses[span.status].label}>
-              <div>{formatRange(span.startMs, span.endMs, timeZone)}</div>
-              <TooltipLine
-                label={i18n.DURATION}
-                value={formatDuration(span.endMs - span.startMs)}
-              />
-            </TooltipBox>
+            <TimelineTooltip
+              title={statuses[span.status].label}
+              rows={[
+                { label: i18n.COLUMN_TIME, value: formatRange(span.startMs, span.endMs, format) },
+                { label: i18n.DURATION, value: formatDuration(span.endMs - span.startMs) },
+              ]}
+            />
           )}
         />
       ))}
@@ -440,21 +470,32 @@ const CaseRowChart: React.FC<{
   );
 };
 
-const entryTimeText = (entry: TimelineEntry, timeZone: string): string =>
+const entryTimeText = (entry: TimelineEntry, format: TimeFormat): string =>
   entry.endMs !== undefined
-    ? formatRange(entry.occurredMs, entry.endMs, timeZone)
-    : formatTime(entry.occurredMs, timeZone);
+    ? formatRange(entry.occurredMs, entry.endMs, format)
+    : formatTime(entry.occurredMs, format);
 
-const EntryTooltipLines: React.FC<{ entry: TimelineEntry; timeZone: string }> = ({
+const entryTooltipRows = (entry: TimelineEntry, format: TimeFormat): Array<TooltipRow | false> => [
+  { label: i18n.FIELD_CATEGORY, value: i18n.CATEGORY_LABELS[entry.category] },
+  { label: i18n.COLUMN_TIME, value: entryTimeText(entry, format) },
+  entry.data.content !== undefined && {
+    label: i18n.FIELD_TEXT,
+    value: entry.data.content.slice(0, 300),
+  },
+  { label: i18n.CREATED_BY, value: entry.createdBy },
+];
+
+const EntryTooltipLines: React.FC<{ entry: TimelineEntry; format: TimeFormat }> = ({
   entry,
-  timeZone,
+  format,
 }) => (
-  <>
-    <div>{i18n.CATEGORY_LABELS[entry.category]}</div>
-    <div>{entryTimeText(entry, timeZone)}</div>
-    {entry.data.content && <div>{entry.data.content.slice(0, 300)}</div>}
-    <div>{i18n.BY_USER(entry.createdBy)}</div>
-  </>
+  <EuiDescriptionList
+    compressed
+    type="inline"
+    listItems={entryTooltipRows(entry, format).flatMap((row) =>
+      row ? [{ title: row.label, description: row.value }] : []
+    )}
+  />
 );
 
 let measureCanvas: HTMLCanvasElement | undefined;
@@ -472,9 +513,9 @@ const entryRowHeight = (levels: number): number =>
 const EntryMarkers: React.FC<{
   layout: EntryLabelLayout;
   selectedId?: string;
-  timeZone: string;
+  format: TimeFormat;
   onEntryClick: (entry: TimelineEntry) => void;
-}> = ({ layout, selectedId, timeZone, onEntryClick }) => {
+}> = ({ layout, selectedId, format, onEntryClick }) => {
   const { euiTheme } = useEuiTheme();
   return (
     <>
@@ -490,7 +531,7 @@ const EntryMarkers: React.FC<{
         >
           <EuiToolTip
             title={entry.data.title}
-            content={<EntryTooltipLines entry={entry} timeZone={timeZone} />}
+            content={<EntryTooltipLines entry={entry} format={format} />}
             display="block"
           >
             <EuiLink
@@ -533,9 +574,9 @@ const EntryRowChart: React.FC<{
   height: number;
   selectedId?: string;
   common: Omit<RowChartProps, 'id' | 'height'>;
-  timeZone: string;
+  format: TimeFormat;
   onEntryClick: (entry: TimelineEntry) => void;
-}> = ({ row, height, selectedId, common, timeZone, onEntryClick }) => {
+}> = ({ row, height, selectedId, common, format, onEntryClick }) => {
   const { euiTheme } = useEuiTheme();
   const onAnnotationClick = useCallback<AnnotationClickListener>(
     ({ rects, lines }) => {
@@ -559,9 +600,7 @@ const EntryRowChart: React.FC<{
         const selected = entry.id === selectedId;
         const color = selected ? euiTheme.colors.primary : euiTheme.colors.accent;
         const tooltip = () => (
-          <TooltipBox title={entry.data.title}>
-            <EntryTooltipLines entry={entry} timeZone={timeZone} />
-          </TooltipBox>
+          <TimelineTooltip title={entry.data.title} rows={entryTooltipRows(entry, format)} />
         );
         return (
           <React.Fragment key={entry.id}>
@@ -601,7 +640,7 @@ const AlertRowChart: React.FC<{
   window: TimeWindow;
   selectedAlertId?: string;
   common: Omit<RowChartProps, 'id' | 'height'>;
-  timeZone: string;
+  format: TimeFormat;
   onAlertClick: (alert: IncidentTimelineAlert, ruleName: string) => void;
   onCellClick: (cell: AlertCell) => void;
 }> = ({
@@ -611,7 +650,7 @@ const AlertRowChart: React.FC<{
   window,
   selectedAlertId,
   common,
-  timeZone,
+  format,
   onAlertClick,
   onCellClick,
 }) => {
@@ -646,24 +685,30 @@ const AlertRowChart: React.FC<{
       const timeMs = Date.parse(alert.time);
       const writeMs = Date.parse(alert.timestamp);
       return (
-        <TooltipBox title={row.ruleName}>
-          <TooltipLine label={i18n.ALERT_TIME} value={formatTime(timeMs, timeZone)} />
-          {alert.timeSource === 'timestamp' && <div>{i18n.EVENT_TIME_UNAVAILABLE}</div>}
-          {alert.timeSource === 'sequence_start' && <div>{i18n.SEQUENCE_START_TIME}</div>}
-          {alert.timeSource !== 'timestamp' && Math.abs(writeMs - timeMs) > 60 * 1000 && (
-            <TooltipLine label={i18n.WRITE_TIME} value={formatTime(writeMs, timeZone)} />
-          )}
-          {alert.hostNames.length > 0 && (
-            <TooltipLine label={i18n.HOSTS} value={alert.hostNames.join(', ')} />
-          )}
-          {alert.userNames.length > 0 && (
-            <TooltipLine label={i18n.USERS} value={alert.userNames.join(', ')} />
-          )}
-          {alert.severity && <TooltipLine label={i18n.SEVERITY} value={alert.severity} />}
-        </TooltipBox>
+        <TimelineTooltip
+          title={row.ruleName}
+          rows={[
+            { label: i18n.ALERT_TIME, value: formatTime(timeMs, format) },
+            alert.timeSource !== 'original_time' && {
+              label: i18n.COLUMN_TIME_SOURCE,
+              value:
+                alert.timeSource === 'timestamp'
+                  ? i18n.EVENT_TIME_UNAVAILABLE
+                  : i18n.SEQUENCE_START_TIME,
+            },
+            alert.timeSource !== 'timestamp' &&
+              Math.abs(writeMs - timeMs) > 60 * 1000 && {
+                label: i18n.WRITE_TIME,
+                value: formatTime(writeMs, format),
+              },
+            alert.hostNames.length > 0 && { label: i18n.HOSTS, value: alert.hostNames.join(', ') },
+            alert.userNames.length > 0 && { label: i18n.USERS, value: alert.userNames.join(', ') },
+            alert.severity !== undefined && { label: i18n.SEVERITY, value: alert.severity },
+          ]}
+        />
       );
     },
-    [row.ruleName, timeZone]
+    [row.ruleName, format]
   );
 
   const slots = TIMELINE_DENSITY.pointStackSlots;
@@ -695,12 +740,18 @@ const AlertRowChart: React.FC<{
                 strokeWidth: 1,
               }}
               customTooltip={() => (
-                <TooltipBox title={row.ruleName}>
-                  <div>{formatRange(cell.startMs, cell.endMs, timeZone)}</div>
-                  <div>{i18n.ALERT_COUNT(cell.count)}</div>
-                  <TooltipLine label={i18n.HOSTS} value={distinctSummary(cell.hostNames)} />
-                  <TooltipLine label={i18n.USERS} value={distinctSummary(cell.userNames)} />
-                </TooltipBox>
+                <TimelineTooltip
+                  title={row.ruleName}
+                  rows={[
+                    {
+                      label: i18n.COLUMN_TIME,
+                      value: formatRange(cell.startMs, cell.endMs, format),
+                    },
+                    { label: i18n.LANE_ALERTS, value: cell.count },
+                    { label: i18n.HOSTS, value: distinctSummary(cell.hostNames) },
+                    { label: i18n.USERS, value: distinctSummary(cell.userNames) },
+                  ]}
+                />
               )}
             />
           ))}
@@ -760,7 +811,7 @@ const AlertRowChart: React.FC<{
           id={`alerts-${key}`}
           xScaleType={ScaleType.Time}
           yScaleType={ScaleType.Linear}
-          timeZone={timeZone}
+          timeZone={format.timeZone}
           xAccessor="x"
           yAccessors={['y']}
           data={data}
@@ -777,7 +828,7 @@ const AlertRowChart: React.FC<{
           id="alerts-selected"
           xScaleType={ScaleType.Time}
           yScaleType={ScaleType.Linear}
-          timeZone={timeZone}
+          timeZone={format.timeZone}
           xAccessor="x"
           yAccessors={['y']}
           data={[{ x: selected.timeMs, y: selected.stack, alert: selected.alert }]}
@@ -801,7 +852,9 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
   onEntryClick,
 }) => {
   const { euiTheme, colorMode } = useEuiTheme();
-  const timeZone = useTimeZone();
+  const format = useTimeFormat();
+  const { timeZone } = format;
+  const { registerChart, onPointerUpdate } = useSyncedCursor();
   const theme = useMemo(
     () => getChartsTheme(euiTheme.themeName, colorMode),
     [euiTheme.themeName, colorMode]
@@ -811,8 +864,8 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
   const widthPx = Math.max(width, 1);
 
   const common = useMemo(
-    () => ({ window, theme, timeZone, onBrush }),
-    [window, theme, timeZone, onBrush]
+    () => ({ window, theme, timeZone, onBrush, registerChart, onPointerUpdate }),
+    [window, theme, timeZone, onBrush, registerChart, onPointerUpdate]
   );
   const markerGroups = useMemo(
     () => groupCaseMarkers(model.caseLane.markers, window, widthPx, TIMELINE_DENSITY),
@@ -860,9 +913,9 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
           spans={model.caseLane.spans}
           groups={markerGroups}
           common={common}
-          timeZone={timeZone}
+          format={format}
         />
-        <CaseMarkers groups={markerGroups} window={window} widthPx={widthPx} timeZone={timeZone} />
+        <CaseMarkers groups={markerGroups} window={window} widthPx={widthPx} format={format} />
       </LaneRow>
 
       {model.entryRows.length > 0 && (
@@ -885,13 +938,13 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
                   height={height}
                   selectedId={selectedEntryId}
                   common={common}
-                  timeZone={timeZone}
+                  format={format}
                   onEntryClick={onEntryClick}
                 />
                 <EntryMarkers
                   layout={layout}
                   selectedId={selectedEntryId}
-                  timeZone={timeZone}
+                  format={format}
                   onEntryClick={onEntryClick}
                 />
               </LaneRow>
@@ -934,7 +987,7 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
               window={window}
               selectedAlertId={selectedAlertId}
               common={common}
-              timeZone={timeZone}
+              format={format}
               onAlertClick={onAlertClick}
               onCellClick={onCellClick}
             />
@@ -982,8 +1035,7 @@ export const ElasticChartsRenderer: React.FC<TimelineRendererProps> = ({
   );
 };
 
-TooltipBox.displayName = 'TooltipBox';
-TooltipLine.displayName = 'TooltipLine';
+TimelineTooltip.displayName = 'TimelineTooltip';
 RowChart.displayName = 'RowChart';
 RowLabel.displayName = 'RowLabel';
 LaneRow.displayName = 'LaneRow';
